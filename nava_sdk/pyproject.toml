@@ -1,0 +1,14 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nava"
+version = "1.0.0"
+description = "Python SDK for Nava offline Persian speech services"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["httpx>=0.27,<1", "websockets>=15,<16"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["nava"]
