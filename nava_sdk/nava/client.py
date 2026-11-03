@@ -6,6 +6,9 @@ from dataclasses import dataclass
 
 import httpx
 from websockets.asyncio.client import connect
+from websockets.exceptions import ConnectionClosed
+
+WS_FRAME_CHUNK = 1_000_000  # stay well under server per-frame limits
 
 class NavaServiceError(RuntimeError): pass
 @dataclass(frozen=True)
@@ -25,6 +28,15 @@ def check(response: httpx.Response) -> None:
     raise NavaServiceError(f"Nava returned HTTP {response.status_code}: {detail}")
 def ws_url(url: str, path: str) -> str:
     return ("wss://"+url[8:] if url.startswith("https://") else "ws://"+url[7:] if url.startswith("http://") else url)+path
+async def _recv_or_raise(socket) -> str | bytes:
+    try:
+        return await socket.recv()
+    except ConnectionClosed as exc:
+        raise NavaServiceError(f"connection closed before the result arrived: {exc}") from exc
+async def _send_chunked(socket, payload: bytes) -> None:
+    for i in range(0, len(payload), WS_FRAME_CHUNK):
+        await socket.send(payload[i:i + WS_FRAME_CHUNK])
+
 class NavaClient:
     def __init__(self,stt_url="http://127.0.0.1:8001",tts_url="http://127.0.0.1:8002",*,timeout=120.0): self.stt_url=stt_url.rstrip("/"); self.tts_url=tts_url.rstrip("/"); self.http=httpx.Client(timeout=timeout)
     def __enter__(self): return self
@@ -47,9 +59,10 @@ class AsyncNavaClient:
         async with connect(ws_url(self.stt_url,"/ws/stt"),max_size=None) as socket:
             config={k:v for k,v in {"hotwords":hotwords,"initial_prompt":initial_prompt}.items() if v}
             if config: await socket.send(json.dumps(config,ensure_ascii=False))
-            await socket.send(pcm); await socket.send('{"action":"eos"}')
+            await _send_chunked(socket, pcm)
+            await socket.send('{"action":"eos"}')
             while True:
-                frame=await socket.recv()
+                frame=await _recv_or_raise(socket)
                 if isinstance(frame,bytes): continue
                 body=json.loads(frame)
                 if body.get("status")=="error": raise NavaServiceError(body["error"])
@@ -58,7 +71,7 @@ class AsyncNavaClient:
         async with connect(ws_url(self.tts_url,"/ws/tts"),max_size=None) as socket:
             await socket.send(json.dumps({"text":text,"engine":engine,"voice_prompt":voice_prompt,"speed":speed},ensure_ascii=False)); rate=None
             while True:
-                frame=await socket.recv()
+                frame=await _recv_or_raise(socket)
                 if isinstance(frame,bytes):
                     if rate is None: raise NavaServiceError("TTS sent audio before metadata")
                     yield SpeechResult(frame,rate,engine); continue
