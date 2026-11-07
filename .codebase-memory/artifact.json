@@ -1,0 +1,11 @@
+{
+    "schema_version": 2,
+    "commit": "HEAD",
+    "indexed_at": "2026-11-03T10:28:34Z",
+    "project": "nava",
+    "nodes": 153,
+    "edges": 378,
+    "original_size": 1966080,
+    "compressed_size": 167759,
+    "compression_level": 9
+}
