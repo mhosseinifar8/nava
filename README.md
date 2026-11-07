@@ -1,4 +1,4 @@
-# Nava (نوا) — Production-Grade Persian Multi-Engine Speech Platform & SDK
+# Nava ( نوا ) — Production-Grade Persian Multi-Engine Speech Platform & SDK
 
 **nava-fa-speech** is an offline, CPU-optimized Persian speech platform and Python SDK. It provides unified, production-ready Speech-to-Text (STT), Text-to-Speech (TTS), Inverse Text Normalization (ITN), Context-Aware G2P / Ezafe detection, and Zero-Shot Voice Cloning over REST and low-latency WebSockets.
 
