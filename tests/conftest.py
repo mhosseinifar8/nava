@@ -23,6 +23,7 @@ TTS_URL = os.getenv("NAVA_TEST_TTS_URL", "http://127.0.0.1:8002")
 
 # make the nava SDK importable without installing it
 sys.path.insert(0, str(ROOT / "nava_sdk"))
+sys.path.insert(0, str(ROOT))
 
 
 def _load_module(name: str, relpath: str) -> ModuleType:

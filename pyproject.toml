@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nava-fa-speech"
+version = "2.0.0"
+description = "Comprehensive CPU-optimized Persian Multi-Engine STT & TTS platform and Python SDK"
+readme = "README.md"
+authors = [
+    { name = "Mohammad Hosseinifar", email = "mhosseinifar8@gmail.com" }
+]
+license = { text = "MIT" }
+requires-python = ">=3.10"
+keywords = ["persian", "speech", "stt", "tts", "asr", "fastconformer", "shenava", "whisper", "piper", "kokoro", "offline", "voice-cloning"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "httpx>=0.27,<1",
+    "websockets>=13,<18",
+    "fastapi>=0.110.0",
+    "python-multipart>=0.0.9",
+    "uvicorn>=0.30.0",
+    "numpy>=1.24.0",
+    "soundfile>=0.12.0",
+    "huggingface-hub>=0.23.0",
+    "onnxruntime>=1.18.0",
+    "sherpa-onnx>=2.0.0",
+    "pydantic>=2.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "tqdm>=4.66.0",
+]
+
+[project.scripts]
+nava-download = "nava.models.downloader:main"
+nava-server = "nava.server.app:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["nava", "nava_fa_speech"]
+
