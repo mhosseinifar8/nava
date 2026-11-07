@@ -17,6 +17,7 @@ from pocket_tts import TTSModel
 from pydantic import BaseModel, Field, model_validator
 from transformers import AutoTokenizer, T5ForConditionalGeneration
 
+from .pocket_config import localize_pocket_config
 from .settings import Settings
 from .textpipe import (PHONEME_ALIASES, apply_phoneme_overrides, apply_surface_lexicon,
                        chunk_pocket, fit_token_budget, load_lexicon, normalize, split_sentences)
@@ -41,7 +42,11 @@ class G2P:
     def __init__(self):
         folder = settings.models_dir / "g2p"
         if not folder.is_dir(): raise RuntimeError(f"G2P model missing: {folder}")
-        self.tokenizer = AutoTokenizer.from_pretrained(folder, local_files_only=True)
+        # The model's tokenizer_config.json stores extra_special_tokens as a list
+        # (exported by newer transformers); transformers 4.51 expects a dict and
+        # crashes on it. The tokens are unused by G2P, so override with an empty
+        # dict — valid on any transformers version and overrides the file value.
+        self.tokenizer = AutoTokenizer.from_pretrained(folder, local_files_only=True, extra_special_tokens={})
         self.model = T5ForConditionalGeneration.from_pretrained(folder, local_files_only=True).eval(); self.lock = threading.Lock()
     @lru_cache(maxsize=4096)
     def run(self, text: str) -> str:
@@ -64,6 +69,7 @@ class Pocket:
     def __init__(self):
         config = settings.models_dir / "pocket/model.yaml"
         if not config.is_file(): raise RuntimeError(f"Pocket model missing: {config}")
+        config = localize_pocket_config(config, (settings.models_dir / "pocket").resolve())
         self.model = TTSModel.load_model(config=str(config), temp=0.3, eos_threshold=-2.0); self.rate = int(self.model.sample_rate)
         if not callable(getattr(self.model, "_generate_audio_stream_short_text", None)): raise RuntimeError("Pocket Farsi fork is required")
         self.states: dict[str, object] = {}; self._state("default")

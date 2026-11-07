@@ -14,7 +14,8 @@ services:
       MKL_NUM_THREADS: ${STT_OMP_THREADS:-4}
       OPENBLAS_NUM_THREADS: ${STT_OMP_THREADS:-4}
     volumes: [./models:/models:ro]
-    ports: ["127.0.0.1:8001:8001"]
+    ports: 
+        - "8001:8001"
     cpus: "${STT_CPUS:-2.0}"
     cpuset: "${STT_CPUSET:-}"
     mem_limit: "${STT_MEM:-8g}"
@@ -25,7 +26,6 @@ services:
       retries: 3
       start_period: 180s
     restart: unless-stopped
-    networks: [nava]
   nava-tts:
     build: ./nava-tts
     image: nava/tts:local
@@ -39,7 +39,8 @@ services:
       HF_HUB_OFFLINE: "1"
       TRANSFORMERS_OFFLINE: "1"
     volumes: [./models:/models:ro]
-    ports: ["127.0.0.1:8002:8002"]
+    ports:
+        - "8002:8002"
     cpus: "${TTS_CPUS:-2.0}"
     cpuset: "${TTS_CPUSET:-}"
     mem_limit: "${TTS_MEM:-8g}"
@@ -50,8 +51,3 @@ services:
       retries: 3
       start_period: 300s
     restart: unless-stopped
-    networks: [nava]
-networks:
-  nava:
-    driver: bridge
-    internal: true

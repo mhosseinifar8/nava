@@ -1,0 +1,8 @@
+models/**
+!models/voices/.gitkeep
+__pycache__/
+*.pyc
+.env
+.env.bak
+.pytest_cache/
+.venv/
