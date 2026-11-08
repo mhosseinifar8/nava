@@ -3,9 +3,12 @@
 # Generate a tuned .env for this host with: ./scripts/configure_infra.sh auto
 services:
   nava-stt:
-    build: ./nava-stt
+    build:
+      context: .
+      dockerfile: ./nava-stt/Dockerfile
     image: ${NAVA_STT_IMAGE:-nava/stt:local}
     environment:
+      NAVA_MODELS_DIR: /models
       NAVA_WHISPER_MODEL_DIR: /models/whisper-large-v3
       NAVA_WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
       NAVA_STT_WORKERS: ${STT_WORKERS:-2}
@@ -13,7 +16,7 @@ services:
       OMP_NUM_THREADS: ${STT_OMP_THREADS:-4}
       MKL_NUM_THREADS: ${STT_OMP_THREADS:-4}
       OPENBLAS_NUM_THREADS: ${STT_OMP_THREADS:-4}
-    volumes: [./models:/models:ro]
+    volumes: [./models:/models]
     ports: 
         - "8001:8001"
     cpus: "${STT_CPUS:-2.0}"
@@ -27,7 +30,9 @@ services:
       start_period: 180s
     restart: unless-stopped
   nava-tts:
-    build: ./nava-tts
+    build:
+      context: .
+      dockerfile: ./nava-tts/Dockerfile
     image: ${NAVA_TTS_IMAGE:-nava/tts:local}
     environment:
       NAVA_MODELS_DIR: /models
@@ -36,9 +41,9 @@ services:
       OMP_NUM_THREADS: ${TTS_OMP_THREADS:-4}
       MKL_NUM_THREADS: ${TTS_OMP_THREADS:-4}
       OPENBLAS_NUM_THREADS: ${TTS_OMP_THREADS:-4}
-      HF_HUB_OFFLINE: "1"
-      TRANSFORMERS_OFFLINE: "1"
-    volumes: [./models:/models:ro]
+      HF_HUB_OFFLINE: "0"
+      TRANSFORMERS_OFFLINE: "0"
+    volumes: [./models:/models]
     ports:
         - "8002:8002"
     cpus: "${TTS_CPUS:-2.0}"
@@ -56,7 +61,7 @@ services:
     image: ${NAVA_SERVER_IMAGE:-nava/server:local}
     environment:
       NAVA_MODELS_DIR: /models
-    volumes: [./models:/models:ro]
+    volumes: [./models:/models]
     ports:
       - "8000:8000"
     cpus: "${SERVER_CPUS:-2.0}"

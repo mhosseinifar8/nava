@@ -47,11 +47,11 @@ build_and_push() {
 }
 
 if [[ "$SERVICE" == "all" || "$SERVICE" == "stt" ]]; then
-    build_and_push "nava-stt" "nava-stt/Dockerfile" "nava-stt"
+    build_and_push "nava-stt" "nava-stt/Dockerfile" "."
 fi
 
 if [[ "$SERVICE" == "all" || "$SERVICE" == "tts" ]]; then
-    build_and_push "nava-tts" "nava-tts/Dockerfile" "nava-tts"
+    build_and_push "nava-tts" "nava-tts/Dockerfile" "."
 fi
 
 if [[ "$SERVICE" == "all" || "$SERVICE" == "server" ]]; then

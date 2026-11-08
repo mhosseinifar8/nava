@@ -11,8 +11,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 SERVICES = {
-    "stt": [("nava-stt", ROOT / "nava-stt" / "Dockerfile", ROOT / "nava-stt")],
-    "tts": [("nava-tts", ROOT / "nava-tts" / "Dockerfile", ROOT / "nava-tts")],
+    "stt": [("nava-stt", ROOT / "nava-stt" / "Dockerfile", ROOT)],
+    "tts": [("nava-tts", ROOT / "nava-tts" / "Dockerfile", ROOT)],
     "server": [("nava", ROOT / "Dockerfile", ROOT)],
 }
 
