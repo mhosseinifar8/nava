@@ -166,6 +166,64 @@ nava-server --host 0.0.0.0 --port 8000
 
 ---
 
+## Docker & Automated Docker Hub Deployment
+
+Nava provides prebuilt Docker containers published automatically to Docker Hub on every commit to `main` and release tag:
+
+| Container Image | Description | Default Port |
+|---|---|---|
+| `nava-stt` | Faster-Whisper Persian STT Service | `8001` |
+| `nava-tts` | Piper & Pocket-TTS Persian TTS Service | `8002` |
+| `nava` / `nava-server` | Full Unified Persian Speech Platform (All Engines) | `8000` |
+
+### Running with Docker Compose
+
+```bash
+# 1. Download models to ./models
+nava-download --profile minimal
+
+# 2. Start STT & TTS microservices
+docker compose up -d
+
+# Or start the unified server
+docker compose --profile unified up -d
+```
+
+### Pulling Prebuilt Images from Docker Hub
+
+```bash
+# Pull images directly
+docker pull <DOCKERHUB_USERNAME>/nava-stt:latest
+docker pull <DOCKERHUB_USERNAME>/nava-tts:latest
+docker pull <DOCKERHUB_USERNAME>/nava:latest
+
+# Run the Unified Server container
+docker run -d \
+  -p 8000:8000 \
+  -v $(pwd)/models:/models:ro \
+  --name nava \
+  <DOCKERHUB_USERNAME>/nava:latest
+```
+
+### Automated CI/CD (GitHub Actions)
+
+Every push to `main` or semantic release tag (`v*.*.*`) automatically triggers the `.github/workflows/docker-publish.yml` pipeline to build and publish multi-service images to Docker Hub.
+
+To enable publishing, configure the following in **GitHub Repo > Settings > Secrets and variables > Actions**:
+- `DOCKERHUB_USERNAME`: Your Docker Hub username or organization.
+- `DOCKERHUB_TOKEN`: Your Docker Hub Personal Access Token (PAT) with Read & Write permissions.
+
+You can also manually build and publish locally using either the Python or Bash helper scripts:
+```bash
+# Using Python:
+python3 scripts/docker_build_and_push.py --username <DOCKERHUB_USERNAME> --push
+
+# Or using Bash:
+./scripts/docker_build_and_push.sh <DOCKERHUB_USERNAME> latest all true
+```
+
+---
+
 ## Running Tests
 
 ```bash

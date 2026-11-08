@@ -1,0 +1,112 @@
+name: Build & Publish Docker Hub Images
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*.*.*"
+      - "v*"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      push_to_dockerhub:
+        description: "Publish images to Docker Hub (set to false for dry-run build)"
+        type: boolean
+        default: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-push:
+    name: Build & Push (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: nava-stt
+            context: ./nava-stt
+            file: ./nava-stt/Dockerfile
+            image_names: "nava-stt"
+
+          - name: nava-tts
+            context: ./nava-tts
+            file: ./nava-tts/Dockerfile
+            image_names: "nava-tts"
+
+          - name: nava-server
+            context: .
+            file: ./Dockerfile
+            image_names: "nava,nava-server"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Determine Docker image targets
+        id: targets
+        run: |
+          DOCKER_USER="${{ secrets.DOCKERHUB_USERNAME }}"
+          if [ -z "$DOCKER_USER" ]; then
+            DOCKER_USER="${{ github.repository_owner }}"
+          fi
+          # Docker Hub repository names must be lowercase
+          DOCKER_USER=$(echo "$DOCKER_USER" | tr '[:upper:]' '[:lower:]')
+
+          TARGETS=""
+          IFS=',' read -ra ADDR <<< "${{ matrix.image_names }}"
+          for img in "${ADDR[@]}"; do
+            TARGETS+="${DOCKER_USER}/${img}"$'\n'
+          done
+
+          echo "images<<EOF" >> $GITHUB_OUTPUT
+          echo "$TARGETS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.targets.outputs.images }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-,format=short
+
+      - name: Verify Docker Hub Credentials
+        if: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.push_to_dockerhub == true) }}
+        run: |
+          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ] || [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "::error::Missing Docker Hub credentials! Please configure DOCKERHUB_USERNAME and DOCKERHUB_TOKEN in GitHub repository secrets (Settings -> Secrets and variables -> Actions)."
+            exit 1
+          fi
+
+      - name: Log in to Docker Hub
+        if: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.push_to_dockerhub == true) }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.push_to_dockerhub == true) }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+

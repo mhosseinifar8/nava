@@ -4,7 +4,7 @@
 services:
   nava-stt:
     build: ./nava-stt
-    image: nava/stt:local
+    image: ${NAVA_STT_IMAGE:-nava/stt:local}
     environment:
       NAVA_WHISPER_MODEL_DIR: /models/whisper-large-v3
       NAVA_WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
@@ -28,7 +28,7 @@ services:
     restart: unless-stopped
   nava-tts:
     build: ./nava-tts
-    image: nava/tts:local
+    image: ${NAVA_TTS_IMAGE:-nava/tts:local}
     environment:
       NAVA_MODELS_DIR: /models
       NAVA_TTS_WORKERS: ${TTS_WORKERS:-2}
@@ -51,3 +51,21 @@ services:
       retries: 3
       start_period: 300s
     restart: unless-stopped
+  nava-server:
+    build: .
+    image: ${NAVA_SERVER_IMAGE:-nava/server:local}
+    environment:
+      NAVA_MODELS_DIR: /models
+    volumes: [./models:/models:ro]
+    ports:
+      - "8000:8000"
+    cpus: "${SERVER_CPUS:-2.0}"
+    mem_limit: "${SERVER_MEM:-8g}"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    profiles: ["all", "unified"]
