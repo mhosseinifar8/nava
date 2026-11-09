@@ -27,22 +27,42 @@ class Engine:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self.model = None
-        if settings.model_dir.is_dir():
+        self._find_and_init_model()
+
+    def _find_and_init_model(self) -> None:
+        candidates = [
+            self.settings.model_dir,
+            Path("/models/whisper-large-v3"),
+            Path("/models/whisper-turbo-persian-givia"),
+            Path("/models/whisper-turbo-persian-gholizadeh"),
+            Path("./models/whisper-large-v3"),
+        ]
+        target_dir = None
+        for cand in candidates:
+            if cand.is_dir() and ((cand / "model.bin").is_file() or (cand / "model.safetensors").is_file()):
+                target_dir = cand
+                break
+
+        if target_dir is not None:
             try:
                 from faster_whisper import WhisperModel
+
                 self.model = WhisperModel(
-                    str(settings.model_dir),
+                    str(target_dir),
                     device="cpu",
-                    compute_type=settings.compute_type,
-                    cpu_threads=settings.omp_threads,
-                    num_workers=settings.workers,
+                    compute_type=self.settings.compute_type,
+                    cpu_threads=self.settings.omp_threads,
+                    num_workers=self.settings.workers,
                 )
             except Exception as e:
                 print(f"Warning: Faster-Whisper init failed: {e}")
 
     def run(self, pcm: bytes, initial_prompt: str | None, hotwords: str | None) -> Result:
         if self.model is None:
+            self._find_and_init_model()
+        if self.model is None:
             from faster_whisper import WhisperModel
+
             self.model = WhisperModel(
                 str(self.settings.model_dir),
                 device="cpu",
@@ -120,7 +140,13 @@ async def infer(
     pool = getattr(app.state, "pool", None)
     local_engine = getattr(app.state, "engine", None)
 
-    # 1. Try unified engine first (shenava, nemotron, whisper variants)
+    # 1. If Faster-Whisper is specifically requested and initialized locally, use it directly
+    if target_model in ("faster-whisper", "whisper-large-v3") and local_engine is not None and getattr(local_engine, "model", None) is not None:
+        return await asyncio.get_running_loop().run_in_executor(
+            pool, local_engine.run, pcm, initial_prompt, hotwords
+        )
+
+    # 2. Try unified engine (shenava, nemotron, whisper variants)
     try:
         from nava.engines.factory import get_stt_engine
         stt_eng = get_stt_engine(target_model)
@@ -140,7 +166,7 @@ async def infer(
             language_prob=res.language_prob,
         )
     except Exception as exc:
-        # 2. Fall back to local Faster-Whisper if available or requested
+        # 3. Fall back to local Faster-Whisper if available
         if local_engine is not None and getattr(local_engine, "model", None) is not None:
             return await asyncio.get_running_loop().run_in_executor(
                 pool, local_engine.run, pcm, initial_prompt, hotwords

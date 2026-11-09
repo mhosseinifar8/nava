@@ -38,7 +38,22 @@ async def websocket_stt_endpoint(ws: WebSocket) -> None:
         "enable_itn": True,
         "hotwords": None,
         "custom_dictionary": None,
+        "initial_prompt": None,
     }
+
+    # Initialize from query parameters if present
+    for qk in ("model", "engine", "latency_ms", "hotwords", "enable_itn", "sample_rate", "initial_prompt"):
+        if qk in ws.query_params:
+            target_k = "model" if qk == "engine" else qk
+            val = ws.query_params[qk]
+            if qk == "enable_itn":
+                val = val.lower() not in ("false", "0", "no")
+            elif qk in ("latency_ms", "sample_rate"):
+                try:
+                    val = int(val)
+                except ValueError:
+                    pass
+            config[target_k] = val
 
     engine = None
     stream_obj = None
@@ -51,38 +66,51 @@ async def websocket_stt_endpoint(ws: WebSocket) -> None:
             if frame["type"] == "websocket.disconnect":
                 return
 
+            is_eos = False
+
             # Binary audio chunk received
             if frame.get("bytes") is not None:
                 chunk = frame["bytes"]
-                accumulated_pcm.extend(chunk)
+                if len(chunk) == 0:
+                    # Empty binary frame indicates EOS
+                    is_eos = True
+                else:
+                    accumulated_pcm.extend(chunk)
 
-                if engine is None:
-                    engine = get_stt_engine(config["model"])
+                    if engine is None:
+                        engine = get_stt_engine(config["model"])
 
-                if hasattr(engine, "feed_audio"):
-                    if stream_obj is None:
-                        stream_obj = engine.create_stream(
-                            hotwords=config["hotwords"],
-                            latency_ms=config["latency_ms"],
-                        )
-                    engine.feed_audio(stream_obj, chunk)
-                    partial_text = engine.get_partial(stream_obj)
-                    if partial_text:
-                        await ws.send_json({"type": "partial", "text": partial_text})
-                continue
+                    if hasattr(engine, "feed_audio"):
+                        if stream_obj is None:
+                            stream_obj = engine.create_stream(
+                                hotwords=config["hotwords"],
+                                latency_ms=config["latency_ms"],
+                            )
+                        engine.feed_audio(stream_obj, chunk)
+                        partial_text = engine.get_partial(stream_obj)
+                        if partial_text:
+                            await ws.send_json({"type": "partial", "text": partial_text})
+                    continue
 
             # Text / Control message received
-            raw_text = frame.get("text") or ""
-            try:
-                msg = json.loads(raw_text)
-            except json.JSONDecodeError:
-                await ws.send_json({"status": "error", "error": "Control frame must be valid JSON"})
-                continue
+            msg = {}
+            if frame.get("text"):
+                raw_text = frame.get("text") or ""
+                try:
+                    msg = json.loads(raw_text)
+                except json.JSONDecodeError:
+                    await ws.send_json({"status": "error", "error": "Control frame must be valid JSON"})
+                    continue
 
-            action = msg.get("action")
+                if isinstance(msg, dict):
+                    action = msg.get("action")
+                    msg_type = msg.get("type")
+                    event = msg.get("event")
+                    if action in ("eos", "eof", "close") or msg_type in ("eos", "done", "close") or event == "eos" or msg.get("eof"):
+                        is_eos = True
 
             # Check if this is an EOF / EOS event
-            if action in ("eos", "eof"):
+            if is_eos:
                 if engine is None:
                     engine = get_stt_engine(config["model"])
 

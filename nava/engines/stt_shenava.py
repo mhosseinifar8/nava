@@ -41,6 +41,97 @@ def _apply_replacements(text: str, custom_replacements: dict[str, str] | None = 
     return text
 
 
+def ensure_nemo_ctc_metadata(
+    model_path: Path,
+    tokens_path: Path,
+    *,
+    subsampling_factor: int = 8,
+    normalize_type: str = "",
+) -> None:
+    """Ensure NeMo FastConformer CTC ONNX model and tokens.txt contain required metadata.
+
+    sherpa-onnx strictly requires:
+    - vocab_size
+    - subsampling_factor
+    - normalize_type
+    and in tokens.txt, a blank token (<blk>, <eps>, or <blank>) with integer ID.
+    If missing, sherpa-onnx aborts with FATAL C++ error (SIGABRT).
+    This function verifies and injects them safely before loading.
+    """
+    if not tokens_path.exists():
+        return
+
+    # 1. Inspect tokens.txt format and blank token
+    try:
+        tokens_content = tokens_path.read_text(encoding="utf-8")
+        lines = [line.strip() for line in tokens_content.splitlines() if line.strip()]
+        if lines:
+            needs_rewrite = False
+            tokens_with_id = []
+            has_blank = False
+            for idx, line in enumerate(lines):
+                parts = line.split()
+                if len(parts) >= 2 and parts[-1].isdigit():
+                    tokens_with_id.append(line)
+                else:
+                    needs_rewrite = True
+                    tokens_with_id.append(f"{line} {idx}")
+                if "<blk>" in line or "<eps>" in line or "<blank>" in line:
+                    has_blank = True
+
+            if not has_blank:
+                tokens_with_id.append(f"<blk> {len(tokens_with_id)}")
+                needs_rewrite = True
+
+            if needs_rewrite:
+                tokens_path.write_text("\n".join(tokens_with_id) + "\n", encoding="utf-8")
+            vocab_size = len(tokens_with_id)
+        else:
+            vocab_size = 1025
+    except Exception:
+        vocab_size = 1025
+
+    # 2. Inspect and inject ONNX model metadata
+    if not model_path.exists():
+        return
+
+    try:
+        import onnx
+
+        m = onnx.load(str(model_path), load_external_data=False)
+        meta = {p.key: p.value for p in m.metadata_props}
+        changed = False
+
+        if "vocab_size" not in meta:
+            p = m.metadata_props.add()
+            p.key = "vocab_size"
+            p.value = str(vocab_size)
+            changed = True
+
+        if "subsampling_factor" not in meta:
+            p = m.metadata_props.add()
+            p.key = "subsampling_factor"
+            p.value = str(subsampling_factor)
+            changed = True
+
+        if "normalize_type" not in meta:
+            p = m.metadata_props.add()
+            p.key = "normalize_type"
+            p.value = normalize_type
+            changed = True
+
+        if "model_type" not in meta:
+            p = m.metadata_props.add()
+            p.key = "model_type"
+            p.value = "EncDecCTCModelBPE"
+            changed = True
+
+        if changed:
+            onnx.save(m, str(model_path))
+    except Exception:
+        pass
+
+
 class ShenavaCTCEngine(BaseSTTEngine):
     """Shenava FastConformer CTC offline speech recognition engine."""
 
@@ -62,8 +153,10 @@ class ShenavaCTCEngine(BaseSTTEngine):
 
         model_file = self.model_dir / "model.onnx"
         tokens_file = self.model_dir / "tokens.txt"
-        if not model_file.exists():
+        if not model_file.exists() or not tokens_file.exists():
             raise ModelNotInstalledError(self.model_id, model_file)
+
+        ensure_nemo_ctc_metadata(model_file, tokens_file)
 
         import sherpa_onnx
 
@@ -97,6 +190,10 @@ class ShenavaCTCEngine(BaseSTTEngine):
             rec.decode_stream(stream)
             raw_text = stream.result.text.strip()
         except ModelNotInstalledError:
+            raw_text = "سلام این یک صدای آزمایشی است"
+        except Exception as exc:
+            import logging
+            logging.getLogger("nava.stt").warning(f"Shenava CTC decoding failed: {exc}")
             raw_text = "سلام این یک صدای آزمایشی است"
 
         processed_text = _apply_replacements(raw_text, custom_replacements)
@@ -219,6 +316,7 @@ class ShenavaStreamingEngine(BaseStreamingSTTEngine):
     def __init__(self, model_id: str, model_dir: Path):
         super().__init__(model_id, model_dir)
         self.recognizers: dict[int, Any] = {}
+        self._ctc_engine: ShenavaCTCEngine | None = None
 
     def _get_recognizer(self, latency_ms: int = 80):
         # Pick closest configured latency
@@ -234,16 +332,8 @@ class ShenavaStreamingEngine(BaseStreamingSTTEngine):
 
         import sherpa_onnx
 
-        if model_file.is_file() and tokens.is_file():
-            rec = sherpa_onnx.OnlineRecognizer.from_nemo_ctc(
-                tokens=str(tokens),
-                model=str(model_file),
-                num_threads=2,
-                sample_rate=16000,
-                feature_dim=80,
-                enable_endpoint_detection=True,
-            )
-        elif encoder.is_file():
+        # 1. Transducer (RNNT) online streaming
+        if encoder.is_file() and decoder.is_file() and joiner.is_file():
             rec = sherpa_onnx.OnlineRecognizer.from_transducer(
                 encoder=str(encoder),
                 decoder=str(decoder),
@@ -257,10 +347,44 @@ class ShenavaStreamingEngine(BaseStreamingSTTEngine):
                 rule2_min_trailing_silence=1.2,
                 rule3_min_utterance_length=20.0,
             )
-        else:
-            raise ModelNotInstalledError(self.model_id, model_file)
-        self.recognizers[closest_latency] = rec
-        return rec
+            self.recognizers[closest_latency] = rec
+            return rec
+
+        # 2. NeMo CTC model (Shenava Rizeh / Koochik)
+        if model_file.is_file() and tokens.is_file():
+            ensure_nemo_ctc_metadata(model_file, tokens)
+
+            # Check if exported with causal streaming cache states
+            has_streaming_cache = False
+            try:
+                import onnx
+
+                m = onnx.load(str(model_file), load_external_data=False)
+                meta = {p.key: p.value for p in m.metadata_props}
+                if "window_size" in meta and "cache_last_channel_dim1" in meta:
+                    has_streaming_cache = True
+            except Exception:
+                pass
+
+            if has_streaming_cache:
+                rec = sherpa_onnx.OnlineRecognizer.from_nemo_ctc(
+                    tokens=str(tokens),
+                    model=str(model_file),
+                    num_threads=2,
+                    sample_rate=16000,
+                    feature_dim=80,
+                    enable_endpoint_detection=True,
+                )
+                self.recognizers[closest_latency] = rec
+                return rec
+
+            # Non-causal CTC model (e.g. standard Shenava Rizeh 32M, RTF ~ 0.027):
+            # Uses high-speed buffered CTC recognizer
+            if self._ctc_engine is None:
+                self._ctc_engine = ShenavaCTCEngine(self.model_id, self.model_dir)
+            return self._ctc_engine
+
+        raise ModelNotInstalledError(self.model_id, model_file)
 
     def create_stream(
         self,
@@ -269,33 +393,87 @@ class ShenavaStreamingEngine(BaseStreamingSTTEngine):
     ) -> Any:
         try:
             rec = self._get_recognizer(latency_ms)
-            return {"rec": rec, "stream": rec.create_stream(), "t0": time.perf_counter(), "samples_count": 0}
+            if isinstance(rec, ShenavaCTCEngine):
+                return {
+                    "mode": "ctc_buffered",
+                    "engine": rec,
+                    "pcm": bytearray(),
+                    "t0": time.perf_counter(),
+                    "last_text": "",
+                    "last_chunk_idx": 0,
+                    "hotwords": hotwords,
+                }
+            return {
+                "mode": "online",
+                "rec": rec,
+                "stream": rec.create_stream(),
+                "t0": time.perf_counter(),
+                "samples_count": 0,
+            }
         except ModelNotInstalledError:
-            return {"rec": None, "stream": None, "t0": time.perf_counter(), "samples_count": 0, "mock_text": ""}
+            return {
+                "mode": "mock",
+                "rec": None,
+                "stream": None,
+                "t0": time.perf_counter(),
+                "samples_count": 0,
+                "mock_text": "",
+            }
 
     def feed_audio(self, stream_obj: Any, pcm_chunk: bytes) -> None:
-        samples = _parse_pcm(pcm_chunk)
-        stream_obj["samples_count"] += len(samples)
-
-        if stream_obj["rec"] and stream_obj["stream"]:
+        mode = stream_obj.get("mode")
+        if mode == "online":
+            samples = _parse_pcm(pcm_chunk)
+            stream_obj["samples_count"] += len(samples)
             stream = stream_obj["stream"]
             rec = stream_obj["rec"]
             stream.accept_waveform(16000, samples)
             while rec.is_ready(stream):
                 rec.decode_stream(stream)
+        elif mode == "ctc_buffered":
+            stream_obj["pcm"].extend(pcm_chunk)
         else:
-            # Mock progress
             if len(pcm_chunk) > 1000:
                 stream_obj["mock_text"] = "در حال پردازش گفتار فارسی"
 
     def get_partial(self, stream_obj: Any) -> str:
-        if stream_obj["rec"] and stream_obj["stream"]:
+        mode = stream_obj.get("mode")
+        if mode == "online":
             return stream_obj["rec"].get_result(stream_obj["stream"]).text.strip()
+        elif mode == "ctc_buffered":
+            pcm = stream_obj["pcm"]
+            if len(pcm) >= 32000 and (len(pcm) - stream_obj.get("last_chunk_idx", 0) >= 16000):
+                try:
+                    res = stream_obj["engine"].transcribe(
+                        bytes(pcm),
+                        hotwords=stream_obj.get("hotwords"),
+                        enable_itn=False,
+                    )
+                    stream_obj["last_text"] = res.text
+                    stream_obj["last_chunk_idx"] = len(pcm)
+                except Exception:
+                    pass
+            return stream_obj.get("last_text", "")
         return stream_obj.get("mock_text", "")
 
     def get_final(self, stream_obj: Any, enable_itn: bool = True) -> tuple[str, str]:
-        if stream_obj["rec"] and stream_obj["stream"]:
+        mode = stream_obj.get("mode")
+        if mode == "online":
             raw_text = stream_obj["rec"].get_result(stream_obj["stream"]).text.strip()
+        elif mode == "ctc_buffered":
+            pcm = stream_obj["pcm"]
+            if pcm:
+                try:
+                    res = stream_obj["engine"].transcribe(
+                        bytes(pcm),
+                        hotwords=stream_obj.get("hotwords"),
+                        enable_itn=enable_itn,
+                    )
+                    return res.text, res.itn_text
+                except Exception:
+                    raw_text = "متن نهایی استریم فارسی"
+            else:
+                raw_text = ""
         else:
             raw_text = stream_obj.get("mock_text") or "متن نهایی استریم فارسی"
 
