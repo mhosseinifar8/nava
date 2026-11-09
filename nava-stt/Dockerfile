@@ -1,6 +1,29 @@
 FROM python:3.11-slim
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_INDEX_URL=https://package-mirror.liara.ir/repository/pypi/simple \
+    PIP_TRUSTED_HOST=package-mirror.liara.ir
+
 WORKDIR /srv
+
+# Configure Liara mirrors for Debian apt
+RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+      sed -i 's|http://deb.debian.org/debian-security|http://linux-mirror.liara.ir/repository/debian-security/|g' /etc/apt/sources.list.d/debian.sources && \
+      sed -i 's|http://deb.debian.org/debian|http://linux-mirror.liara.ir/repository/debian/|g' /etc/apt/sources.list.d/debian.sources; \
+    fi && \
+    if [ -f /etc/apt/sources.list ]; then \
+      sed -i 's|http://deb.debian.org/debian-security|http://linux-mirror.liara.ir/repository/debian-security/|g' /etc/apt/sources.list && \
+      sed -i 's|http://deb.debian.org/debian|http://linux-mirror.liara.ir/repository/debian/|g' /etc/apt/sources.list; \
+    fi
+
+# System dependencies for audio processing
+RUN apt-get update && apt-get install -y --no-install-recommends libsndfile1 git && rm -rf /var/lib/apt/lists/*
+
+# Configure Liara mirror for pip
+RUN pip config set global.index-url https://package-mirror.liara.ir/repository/pypi/simple && \
+    pip config set global.trusted-host package-mirror.liara.ir
 
 # Dependencies for Faster-Whisper STT service
 COPY nava-stt/requirements.txt .
