@@ -27,7 +27,6 @@ services:
     ports: 
         - "8001:8001"
     cpus: "${STT_CPUS:-2.0}"
-    cpuset: "${STT_CPUSET:-}"
     mem_limit: "${STT_MEM:-8g}"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/healthz', timeout=3)"]
@@ -60,8 +59,7 @@ services:
     volumes: [./models:/models]
     ports:
         - "8002:8002"
-    cpus: "${TTS_CPUS:-2.0}"
-    cpuset: "${TTS_CPUSET:-}"
+    cpus: "${TTS_CPUS:-4.0}"
     mem_limit: "${TTS_MEM:-8g}"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/healthz', timeout=3)"]

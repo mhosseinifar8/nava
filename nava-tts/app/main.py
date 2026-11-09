@@ -14,6 +14,23 @@ from typing import Any
 
 import numpy as np
 
+import os
+
+try:
+    import onnxruntime as ort
+    _orig_SessionOptions = ort.SessionOptions
+
+    class _PatchedSessionOptions(_orig_SessionOptions):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            num_threads = int(os.getenv("OMP_NUM_THREADS", os.getenv("TTS_OMP_THREADS", "2")))
+            self.intra_op_num_threads = max(1, num_threads)
+            self.inter_op_num_threads = 1
+
+    ort.SessionOptions = _PatchedSessionOptions
+except Exception:
+    pass
+
 try:
     import torch
 except ImportError:
@@ -409,6 +426,14 @@ async def speech(payload: Speech):
 @app.websocket("/v1/ws/tts")
 @app.websocket("/v1/v1/ws/tts")
 @app.websocket("/api/v1/ws/tts")
+@app.websocket("/v1/audio/speech")
+@app.websocket("/v1/v1/audio/speech")
+@app.websocket("/api/v1/speech")
+@app.websocket("/v1/api/v1/speech")
+@app.websocket("/audio/speech")
+@app.websocket("/speech")
+@app.websocket("/v1/tts")
+@app.websocket("/tts")
 @app.websocket("/v1/ws")
 @app.websocket("/ws")
 async def websocket_tts(ws: WebSocket):

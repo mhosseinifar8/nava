@@ -219,6 +219,14 @@ async def transcribe(
 @app.websocket("/v1/ws/stt")
 @app.websocket("/v1/v1/ws/stt")
 @app.websocket("/api/v1/ws/stt")
+@app.websocket("/v1/audio/transcriptions")
+@app.websocket("/v1/v1/audio/transcriptions")
+@app.websocket("/api/v1/transcriptions")
+@app.websocket("/v1/api/v1/transcriptions")
+@app.websocket("/audio/transcriptions")
+@app.websocket("/transcriptions")
+@app.websocket("/v1/stt")
+@app.websocket("/stt")
 @app.websocket("/v1/ws")
 @app.websocket("/ws")
 async def websocket_stt(ws: WebSocket) -> None:
@@ -229,6 +237,15 @@ async def websocket_stt(ws: WebSocket) -> None:
         "hotwords": None,
         "enable_itn": True,
     }
+    # Initialize from query parameters if present
+    for qk in ("model", "engine", "initial_prompt", "hotwords", "enable_itn"):
+        if qk in ws.query_params:
+            target_k = "model" if qk == "engine" else qk
+            val = ws.query_params[qk]
+            if qk == "enable_itn":
+                val = val.lower() not in ("false", "0", "no")
+            config[target_k] = val
+
     pcm = bytearray()
     try:
         while True:
@@ -236,34 +253,46 @@ async def websocket_stt(ws: WebSocket) -> None:
             if frame["type"] == "websocket.disconnect":
                 return
             if frame.get("bytes") is not None:
-                pcm.extend(frame["bytes"])
-                if len(pcm) > settings.max_audio_bytes:
-                    await ws.send_json({"status": "error", "error": "audio exceeds NAVA_MAX_STT_AUDIO_BYTES"})
-                    await ws.close(1009)
-                    return
+                chunk = frame["bytes"]
+                if len(chunk) == 0:
+                    # Empty binary frame treated as EOS
+                    pass
+                else:
+                    pcm.extend(chunk)
+                    if len(pcm) > settings.max_audio_bytes:
+                        await ws.send_json({"status": "error", "error": "audio exceeds NAVA_MAX_STT_AUDIO_BYTES"})
+                        await ws.close(1009)
+                        return
+                    continue
+
+            is_eos = False
+            if frame.get("bytes") is not None and len(frame["bytes"]) == 0:
+                is_eos = True
+            elif frame.get("text"):
+                try:
+                    control = json.loads(frame.get("text") or "")
+                except json.JSONDecodeError:
+                    await ws.send_json({"status": "error", "error": "control frame must be JSON"})
+                    continue
+
+                if isinstance(control, dict):
+                    # Update configuration
+                    for k in ("model", "engine", "initial_prompt", "hotwords", "enable_itn"):
+                        if k in control and control[k] is not None:
+                            target_k = "model" if k == "engine" else k
+                            config[target_k] = control[k]
+
+                    if control.get("action") in ("eos", "close") or control.get("type") in ("eos", "done", "close") or control.get("event") == "eos" or control.get("eof"):
+                        is_eos = True
+                    else:
+                        # Acknowledge configuration frame
+                        await ws.send_json({"status": "ok", "action": "configured", "model": config["model"]})
+                        continue
+
+            if not is_eos:
                 continue
 
-            try:
-                control = json.loads(frame.get("text") or "")
-            except json.JSONDecodeError:
-                await ws.send_json({"status": "error", "error": "control frame must be JSON"})
-                continue
-
-            if not isinstance(control, dict):
-                continue
-
-            # Update configuration
-            for k in ("model", "engine", "initial_prompt", "hotwords", "enable_itn"):
-                if k in control and control[k] is not None:
-                    target_k = "model" if k == "engine" else k
-                    config[target_k] = control[k]
-
-            if control.get("action") != "eos":
-                # Acknowledge configuration frame
-                await ws.send_json({"status": "ok", "action": "configured", "model": config["model"]})
-                continue
-
-            # EOS action received: process audio
+            # Process accumulated audio on EOS
             try:
                 res = await infer(
                     bytes(pcm),

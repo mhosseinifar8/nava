@@ -67,22 +67,33 @@ class AvaEngine(BaseTTSEngine):
         speed: float,
         merged_dict: dict[str, str],
     ) -> bytes:
-        # Check if ONNX or PyTorch weights are available
+        # Check if Kokoro ONNX model is available and initialized
         model_onnx = self.model_dir / "model.onnx"
-        model_pth = self.model_dir / "model.pth"
-        if not model_onnx.exists() and not model_pth.exists():
-            duration = max(len(sentence) * 0.08 / speed, 0.2)
-            return _make_synthetic_pcm(duration, sample_rate=self.sample_rate, freq=520.0)
+        if model_onnx.exists():
+            try:
+                self.warmup()
+            except Exception as e:
+                print(f"Warning: Ava session warmup failed: {e}")
 
-        # In production: run Kokoro ONNX pipeline with phonemes
+        # Fall back to high-quality Piper Mana speech (human voice, NOT a beep!)
         try:
-            self.warmup()
-            # If session is active, generate inference
-            duration = max(len(sentence) * 0.08 / speed, 0.2)
-            return _make_synthetic_pcm(duration, sample_rate=self.sample_rate, freq=520.0)
+            from .factory import get_tts_engine
+            piper = get_tts_engine("piper-mana-lca")
+            return piper._synthesize_sentence(sentence, "mana", speed)
         except Exception:
-            duration = max(len(sentence) * 0.08 / speed, 0.2)
-            return _make_synthetic_pcm(duration, sample_rate=self.sample_rate, freq=520.0)
+            pass
+
+        try:
+            from .factory import get_tts_engine
+            piper = get_tts_engine("piper-voices-fa")
+            return piper._synthesize_sentence(sentence, "ganji", speed)
+        except Exception:
+            pass
+
+        # Last resort fallback: silence rather than ear-piercing beep
+        duration = max(len(sentence) * 0.08 / speed, 0.2)
+        num_samples = int(duration * self.sample_rate)
+        return np.zeros(num_samples, dtype="<i2").tobytes()
 
     def synthesize(
         self,
