@@ -226,29 +226,39 @@ class ShenavaStreamingEngine(BaseStreamingSTTEngine):
         if closest_latency in self.recognizers:
             return self.recognizers[closest_latency]
 
+        model_file = self.model_dir / "model.onnx"
+        tokens = self.model_dir / "tokens.txt"
         encoder = self.model_dir / "encoder.int8.onnx"
         decoder = self.model_dir / "decoder.int8.onnx"
         joiner = self.model_dir / "joiner.int8.onnx"
-        tokens = self.model_dir / "tokens.txt"
-
-        if not encoder.exists():
-            raise ModelNotInstalledError(self.model_id, encoder)
 
         import sherpa_onnx
 
-        rec = sherpa_onnx.OnlineRecognizer.from_transducer(
-            encoder=str(encoder),
-            decoder=str(decoder),
-            joiner=str(joiner),
-            tokens=str(tokens),
-            num_threads=2,
-            sample_rate=16000,
-            feature_dim=80,
-            enable_endpoint_detection=True,
-            rule1_min_trailing_silence=2.4,
-            rule2_min_trailing_silence=1.2,
-            rule3_min_utterance_length=20.0,
-        )
+        if model_file.is_file() and tokens.is_file():
+            rec = sherpa_onnx.OnlineRecognizer.from_nemo_ctc(
+                tokens=str(tokens),
+                model=str(model_file),
+                num_threads=2,
+                sample_rate=16000,
+                feature_dim=80,
+                enable_endpoint_detection=True,
+            )
+        elif encoder.is_file():
+            rec = sherpa_onnx.OnlineRecognizer.from_transducer(
+                encoder=str(encoder),
+                decoder=str(decoder),
+                joiner=str(joiner),
+                tokens=str(tokens),
+                num_threads=2,
+                sample_rate=16000,
+                feature_dim=80,
+                enable_endpoint_detection=True,
+                rule1_min_trailing_silence=2.4,
+                rule2_min_trailing_silence=1.2,
+                rule3_min_utterance_length=20.0,
+            )
+        else:
+            raise ModelNotInstalledError(self.model_id, model_file)
         self.recognizers[closest_latency] = rec
         return rec
 

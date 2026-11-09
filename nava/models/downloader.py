@@ -155,18 +155,22 @@ def download_file(
     dest = target_dir / rel_path
     dest.parent.mkdir(parents=True, exist_ok=True)
 
-    if dest.exists() and not force:
+    # Check if valid non-empty file already exists
+    if dest.is_file() and dest.stat().st_size > 0 and not force:
         if mf.size_bytes and dest.stat().st_size != mf.size_bytes:
             pass  # Size mismatch, re-download
         elif mf.sha256:
             if compute_sha256(dest) == mf.sha256:
                 if not quiet:
-                    print(f"  [OK] {rel_path} already downloaded and verified.")
+                    print(f"  [OK] {rel_path} already downloaded and verified ({dest.stat().st_size:,} bytes).")
                 return dest
         else:
             if not quiet:
-                print(f"  [OK] {rel_path} already exists.")
+                print(f"  [OK] {rel_path} already exists ({dest.stat().st_size:,} bytes).")
             return dest
+    elif dest.is_file() and dest.stat().st_size == 0:
+        # Clean up 0-byte corrupted/aborted file
+        dest.unlink(missing_ok=True)
 
     subfolder = mf.subfolder or ""
     source_filename = mf.filename
@@ -251,6 +255,13 @@ def download_model(
         model = get_model(model)
 
     target_dir = model.get_local_path(models_dir)
+
+    # Check if the model is already installed with valid non-empty files
+    if not force and model.is_installed(models_dir):
+        if not quiet:
+            print(f"\n=== Model '{model.id}' is already fully downloaded on disk. Skipping download. ===")
+        return True
+
     target_dir.mkdir(parents=True, exist_ok=True)
 
     if not quiet:
@@ -261,7 +272,7 @@ def download_model(
     for mf in model.files:
         try:
             download_file(
-                model.repo_id,
+                mf.repo_id or model.repo_id,
                 mf,
                 target_dir,
                 force=force,

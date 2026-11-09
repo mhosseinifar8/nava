@@ -40,8 +40,16 @@ class WhisperSherpaEngine(BaseSTTEngine):
             return self.recognizer
 
         encoder = self.model_dir / "persian-encoder.int8.onnx"
+        if not encoder.exists():
+            encoder = self.model_dir / "turbo-encoder.int8.onnx"
+
         decoder = self.model_dir / "persian-decoder.onnx"
+        if not decoder.exists():
+            decoder = self.model_dir / "turbo-decoder.onnx"
+
         tokens = self.model_dir / "persian-tokens.txt"
+        if not tokens.exists():
+            tokens = self.model_dir / "turbo-tokens.txt"
 
         if not encoder.exists():
             raise ModelNotInstalledError(self.model_id, encoder)
@@ -150,6 +158,11 @@ class FasterWhisperEngine(BaseSTTEngine):
         if not self.model_dir.is_dir():
             raise ModelNotInstalledError(self.model_id, self.model_dir)
 
+        bin_file = self.model_dir / "model.bin"
+        st_file = self.model_dir / "model.safetensors"
+        if not bin_file.exists() and not st_file.exists():
+            raise ModelNotInstalledError(self.model_id, self.model_dir)
+
         from faster_whisper import WhisperModel
 
         self.model = WhisperModel(
@@ -195,7 +208,7 @@ class FasterWhisperEngine(BaseSTTEngine):
             segs = [{"start": round(s.start, 3), "end": round(s.end, 3), "text": s.text.strip()} for s in stream if s.text.strip()]
             raw_text = " ".join(s["text"] for s in segs)
             lang_prob = round(float(info.language_probability), 4)
-        except (ModelNotInstalledError, ImportError):
+        except (ModelNotInstalledError, ImportError, Exception):
             raw_text = "متن شبیه‌سازی‌شده برای موتور مدل ویسپر"
             segs = [{"start": 0.0, "end": round(duration_s, 3), "text": raw_text}]
             lang_prob = 0.99

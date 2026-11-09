@@ -67,9 +67,10 @@ class AvaEngine(BaseTTSEngine):
         speed: float,
         merged_dict: dict[str, str],
     ) -> bytes:
-        # Check if ONNX model is available
+        # Check if ONNX or PyTorch weights are available
         model_onnx = self.model_dir / "model.onnx"
-        if not model_onnx.exists():
+        model_pth = self.model_dir / "model.pth"
+        if not model_onnx.exists() and not model_pth.exists():
             duration = max(len(sentence) * 0.08 / speed, 0.2)
             return _make_synthetic_pcm(duration, sample_rate=self.sample_rate, freq=520.0)
 

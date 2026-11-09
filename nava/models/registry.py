@@ -21,6 +21,7 @@ class ModelFile:
     sha256: str | None = None
     size_bytes: int | None = None
     subfolder: str | None = None
+    repo_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -47,11 +48,15 @@ class ModelInfo:
         base = _resolve_models_dir(models_dir) / self.id
         if not base.is_dir():
             return False
+        if not self.files:
+            return False
         for mf in self.files:
             rel = mf.target_path or mf.filename
-            # If target_path is specified, check it
             p = base / rel
-            if not p.exists():
+            # Must be an actual regular file with non-zero size (not just an empty directory or 0-byte file)
+            if not p.is_file() or p.stat().st_size == 0:
+                return False
+            if mf.size_bytes and p.stat().st_size != mf.size_bytes:
                 return False
         return True
 
@@ -159,12 +164,12 @@ _register(
         id="shenava-115m-flagship",
         name="Shenava Flagship 115M FastConformer",
         type="stt",
-        repo_id="Reza2kn/shenava-fa-fastconformer-115m",
+        repo_id="Reza2kn/shenava-fa-fastconformer-115m-onnx-fp16",
         files=(
-            ModelFile("model.onnx"),
-            ModelFile("tokens.txt"),
+            ModelFile("fastconformer_v4_ctc_fixed2005_len_fp16_ingraphnorm_embedded.onnx", target_path="model.onnx"),
+            ModelFile("115m_tokens.json", target_path="tokens.json"),
         ),
-        size_mb=460.0,
+        size_mb=230.0,
         ram_mb=750.0,
         rtf_class=0.08,
         streaming=False,
@@ -183,9 +188,7 @@ _register(
         type="stt",
         repo_id="Reza2kn/Shenava-Rizeh-v1.0-sherpa-onnx",
         files=(
-            ModelFile("encoder.int8.onnx"),
-            ModelFile("decoder.int8.onnx"),
-            ModelFile("joiner.int8.onnx"),
+            ModelFile("model.onnx"),
             ModelFile("tokens.txt"),
         ),
         size_mb=85.0,
@@ -208,9 +211,7 @@ _register(
         type="stt",
         repo_id="Reza2kn/Shenava-Rizeh-Pizeh-v1.0-sherpa-onnx",
         files=(
-            ModelFile("encoder.int8.onnx"),
-            ModelFile("decoder.int8.onnx"),
-            ModelFile("joiner.int8.onnx"),
+            ModelFile("model.onnx"),
             ModelFile("tokens.txt"),
         ),
         size_mb=28.0,
@@ -255,13 +256,13 @@ _register(
         id="whisper-turbo-persian-sherpa",
         name="Whisper Large-v3-Turbo Persian (Sherpa Hybrid)",
         type="stt",
-        repo_id="getsovona/sherpa-onnx-whisper-turbo-persian",
+        repo_id="csukuangfj/sherpa-onnx-whisper-turbo",
         files=(
-            ModelFile("persian-encoder.int8.onnx"),
-            ModelFile("persian-decoder.onnx"),
-            ModelFile("persian-tokens.txt"),
+            ModelFile("turbo-encoder.int8.onnx", target_path="persian-encoder.int8.onnx"),
+            ModelFile("turbo-decoder.onnx", target_path="persian-decoder.onnx"),
+            ModelFile("turbo-tokens.txt", target_path="persian-tokens.txt"),
         ),
-        size_mb=950.0,
+        size_mb=1250.0,
         ram_mb=1800.0,
         rtf_class=0.12,
         streaming=False,
@@ -281,12 +282,12 @@ _register(
         type="stt",
         repo_id="givia/whisper-large-v3-turbo-persian",
         files=(
-            ModelFile("model.bin"),
+            ModelFile("model.safetensors"),
             ModelFile("tokenizer.json"),
             ModelFile("config.json"),
         ),
-        size_mb=1600.0,
-        ram_mb=2200.0,
+        size_mb=3100.0,
+        ram_mb=3500.0,
         rtf_class=0.14,
         streaming=False,
         hotwords=True,
@@ -304,12 +305,12 @@ _register(
         type="stt",
         repo_id="MohammadGholizadeh/whisper-large-v3-turbo-persian",
         files=(
-            ModelFile("model.bin"),
+            ModelFile("model.safetensors"),
             ModelFile("tokenizer.json"),
             ModelFile("config.json"),
         ),
-        size_mb=1600.0,
-        ram_mb=2200.0,
+        size_mb=3100.0,
+        ram_mb=3500.0,
         rtf_class=0.14,
         streaming=False,
         hotwords=True,
@@ -325,9 +326,11 @@ _register(
         id="vosk-fa-light",
         name="Vosk Persian Light",
         type="stt",
-        repo_id="alphacep/vosk-model-fa",
-        files=(ModelFile("vosk-model-fa.zip"),),
-        size_mb=45.0,
+        repo_id="rhasspy/vosk-models",
+        files=(
+            ModelFile("vosk-model-small-fa-0.5.zip", subfolder="fa", target_path="vosk-model-fa.zip"),
+        ),
+        size_mb=60.0,
         ram_mb=120.0,
         rtf_class=0.02,
         streaming=True,
@@ -495,7 +498,7 @@ _register(
         type="tts",
         repo_id="xmanii/Ava-82M",
         files=(
-            ModelFile("model.onnx"),
+            ModelFile("model.pth"),
             ModelFile("config.json"),
             ModelFile("pronunciations.json"),
         ),
@@ -517,10 +520,15 @@ _register(
         type="tts",
         repo_id="mah92/Khadijah-FA_EN-Matcha-TTS-Model",
         files=(
-            ModelFile("model.onnx"),
-            ModelFile("hifigan_universal_v1.onnx"),
+            ModelFile("matcha-fa_en-khadijah-22050-3.onnx", target_path="model.onnx"),
+            ModelFile("tokens_sherpa_with_fa.txt", target_path="tokens.txt"),
+            ModelFile(
+                "hifigan_universal_22050hz_v1.onnx",
+                repo_id="mah92/hifigan_for_sherpa",
+                target_path="hifigan_universal_v1.onnx",
+            ),
         ),
-        size_mb=180.0,
+        size_mb=130.0,
         ram_mb=400.0,
         rtf_class=0.08,
         streaming=False,
@@ -540,10 +548,15 @@ _register(
         type="tts",
         repo_id="mah92/Musa-FA_EN-Matcha-TTS-Model",
         files=(
-            ModelFile("model.onnx"),
-            ModelFile("hifigan_universal_v1.onnx"),
+            ModelFile("matcha-fa_en-musa-22050-3.onnx", target_path="model.onnx"),
+            ModelFile("tokens_sherpa_with_fa.txt", target_path="tokens.txt"),
+            ModelFile(
+                "hifigan_universal_22050hz_v1.onnx",
+                repo_id="mah92/hifigan_for_sherpa",
+                target_path="hifigan_universal_v1.onnx",
+            ),
         ),
-        size_mb=180.0,
+        size_mb=130.0,
         ram_mb=400.0,
         rtf_class=0.08,
         streaming=False,
@@ -564,9 +577,10 @@ _register(
         repo_id="mehdi-hf/pocket-tts-farsi-v2",
         files=(
             ModelFile("model.yaml"),
-            ModelFile("weights.pt"),
+            ModelFile("model.safetensors"),
+            ModelFile("tokenizer_ph.model"),
         ),
-        size_mb=450.0,
+        size_mb=440.0,
         ram_mb=850.0,
         rtf_class=0.15,
         streaming=True,
@@ -598,12 +612,13 @@ _register(
         id="nava-fa-clone",
         name="Nava-FA Zero-Shot Voice Clone",
         type="tts",
-        repo_id="zorost/nava-fa",
+        repo_id="mehdi-hf/pocket-tts-farsi-v2",
         files=(
             ModelFile("model.yaml"),
-            ModelFile("weights.pt"),
+            ModelFile("model.safetensors"),
+            ModelFile("tokenizer_ph.model"),
         ),
-        size_mb=450.0,
+        size_mb=440.0,
         ram_mb=850.0,
         rtf_class=0.15,
         streaming=True,

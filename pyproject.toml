@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nava-fa-speech"
-version = "2.0.0"
+version = "2.0.3"
 description = "Comprehensive CPU-optimized Persian Multi-Engine STT & TTS platform and Python SDK"
 readme = "README.md"
 authors = [
