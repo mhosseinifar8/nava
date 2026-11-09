@@ -14,6 +14,11 @@ router = APIRouter(tags=["STT Streaming"])
 
 @router.websocket("/v1/ws/stt")
 @router.websocket("/ws/stt")
+@router.websocket("/v1/v1/ws/stt")
+@router.websocket("/v1/api/v1/ws/stt")
+@router.websocket("/api/v1/ws/stt")
+@router.websocket("/v1/ws")
+@router.websocket("/ws")
 async def websocket_stt_endpoint(ws: WebSocket) -> None:
     """Real-Time Streaming Speech-to-Text WebSocket handler."""
     await ws.accept()

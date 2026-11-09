@@ -15,6 +15,11 @@ router = APIRouter(tags=["TTS Streaming"])
 
 @router.websocket("/v1/ws/tts")
 @router.websocket("/ws/tts")
+@router.websocket("/v1/v1/ws/tts")
+@router.websocket("/v1/api/v1/ws/tts")
+@router.websocket("/api/v1/ws/tts")
+@router.websocket("/v1/ws")
+@router.websocket("/ws")
 async def websocket_tts_endpoint(ws: WebSocket) -> None:
     """Low-latency pipelined sentence-streaming TTS WebSocket handler."""
     await ws.accept()

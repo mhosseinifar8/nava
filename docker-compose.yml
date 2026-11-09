@@ -6,7 +6,7 @@ services:
     build:
       context: .
       dockerfile: ./nava-stt/Dockerfile
-    image: ${NAVA_STT_IMAGE:-nava/stt:local}
+    image: ${NAVA_STT_IMAGE:-mhosseinifar8/nava-stt:latest}
     environment:
       NAVA_MODELS_DIR: /models
       NAVA_WHISPER_MODEL_DIR: /models/whisper-large-v3
@@ -40,7 +40,7 @@ services:
     build:
       context: .
       dockerfile: ./nava-tts/Dockerfile
-    image: ${NAVA_TTS_IMAGE:-nava/tts:local}
+    image: ${NAVA_TTS_IMAGE:-mhosseinifar8/nava-tts:latest}
     environment:
       NAVA_MODELS_DIR: /models
       NAVA_TTS_WORKERS: ${TTS_WORKERS:-2}
@@ -72,7 +72,7 @@ services:
     restart: unless-stopped
   nava-server:
     build: .
-    image: ${NAVA_SERVER_IMAGE:-nava/server:local}
+    image: ${NAVA_SERVER_IMAGE:-mhosseinifar8/nava:latest}
     environment:
       NAVA_MODELS_DIR: /models
       HTTP_PROXY: ${HTTP_PROXY:-}

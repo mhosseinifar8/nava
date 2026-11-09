@@ -36,6 +36,10 @@ class SpeechRequest(BaseModel):
 
 @router.post("/v1/audio/speech")
 @router.post("/api/v1/speech")
+@router.post("/v1/v1/audio/speech")
+@router.post("/v1/api/v1/speech")
+@router.post("/speech")
+@router.post("/audio/speech")
 async def generate_speech(payload: SpeechRequest) -> Response:
     """Synthesize Persian text to speech with voice cloning and multi-speaker support."""
     text_content = payload.input or payload.text

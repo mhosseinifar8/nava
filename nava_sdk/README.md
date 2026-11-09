@@ -1,9 +1,14 @@
 # Nava Persian Speech SDK (`nava-fa-speech`)
 
-[![PyPI version](https://img.shields.io/pypi/v/nava-fa-speech.svg)](https://pypi.org/project/nava-fa-speech/)
-[![Python versions](https://img.shields.io/pypi/pyversions/nava-fa-speech.svg)](https://pypi.org/project/nava-fa-speech/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![CPU Optimized](https://img.shields.io/badge/Inference-CPU%20Optimized-green.svg)](#features)
+<p align="center">
+  <a href="https://pypi.org/project/nava-fa-speech/"><img src="https://img.shields.io/pypi/v/nava-fa-speech.svg" alt="PyPI version"></a>
+  <a href="https://pypi.org/project/nava-fa-speech/"><img src="https://img.shields.io/pypi/pyversions/nava-fa-speech.svg" alt="Python versions"></a>
+  <a href="https://hub.docker.com/r/mhosseinifar8/nava-stt"><img src="https://img.shields.io/badge/docker-mhosseinifar8%2Fnava--stt-2496ED?logo=docker&logoColor=white" alt="Docker STT"></a>
+  <a href="https://hub.docker.com/r/mhosseinifar8/nava-tts"><img src="https://img.shields.io/badge/docker-mhosseinifar8%2Fnava--tts-2496ED?logo=docker&logoColor=white" alt="Docker TTS"></a>
+  <a href="https://hub.docker.com/r/mhosseinifar8/nava"><img src="https://img.shields.io/badge/docker-mhosseinifar8%2Fnava-2496ED?logo=docker&logoColor=white" alt="Docker Server"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="#features"><img src="https://img.shields.io/badge/Inference-CPU%20Optimized-green.svg" alt="CPU Optimized"></a>
+</p>
 
 The official Python SDK and client library for **Nava (نوا)** — an offline, CPU-optimized Persian speech platform supporting production-grade Multi-Engine Speech-to-Text (STT), Text-to-Speech (TTS), Context-Aware Ezafe/G2P processing, Inverse Text Normalization (ITN), and Zero-Shot Voice Cloning.
 
@@ -13,13 +18,14 @@ The official Python SDK and client library for **Nava (نوا)** — an offline,
 
 - [Features](#features)
 - [Installation](#installation)
+- [Docker Hub Official Images](#docker-hub-official-images)
 - [Quick Start](#quick-start)
 - [Python SDK Manual](#python-sdk-manual)
   - [Synchronous Client (`NavaClient`)](#synchronous-client-navaclient)
   - [Asynchronous Client (`AsyncNavaClient`)](#asynchronous-client-asyncnavaclient)
 - [WebSocket Streaming Manual](#websocket-streaming-manual)
-  - [Real-Time STT WebSocket (`/v1/ws/stt`)](#real-time-stt-websocket-v1wsstt)
-  - [Sentence-Streaming TTS WebSocket (`/v1/ws/tts`)](#sentence-streaming-tts-websocket-v1wstts)
+  - [Real-Time STT WebSocket (`/v1/ws/stt` and `/ws/stt`)](#real-time-stt-websocket-v1wsstt-and-wsstt)
+  - [Sentence-Streaming TTS WebSocket (`/v1/ws/tts` and `/ws/tts`)](#sentence-streaming-tts-websocket-v1wstts-and-wstts)
   - [JavaScript / Frontend WebSocket Example](#javascript--frontend-websocket-example)
 - [REST API Reference & cURL Manual](#rest-api-reference--curl-manual)
   - [`POST /v1/audio/transcriptions` (STT)](#post-v1audiotranscriptions-stt)
@@ -43,6 +49,7 @@ The official Python SDK and client library for **Nava (نوا)** — an offline,
   - Real-Time Streaming ASR (`shenava-rizeh-streaming-32m` with RTF ~ 0.027 and `shenava-rizeh-pizeh-6.9m` edge model).
   - Streaming Nemotron (`nemotron-streaming-farsi` with 1120ms chunking).
   - Whisper Turbo Persian (`whisper-turbo-persian-sherpa` hybrid INT8+FP32 with automatic 1.0s silence padding and 2s sliding window overlap).
+  - Lightweight Vosk (`vosk-fa-light`).
 - **Multi-Engine Persian TTS on CPU:**
   - `piper-mana-lca`: Highest MOS 3.14 studio-quality speech with Albert Ezafe.
   - Multi-speaker voices (`amir`, `gyro`, `ganji`, `ganji_adabi`, `reza_ibrahim`, `haaniye_low`).
@@ -53,7 +60,9 @@ The official Python SDK and client library for **Nava (نوا)** — an offline,
   - Context-Aware Ezafe detector (`persian-ezafe-albert` ONNX, <40ms CPU latency).
   - Spoken number conversion with Persian ITN (`"هشتصد و پنجاه"` $\rightarrow$ `"850"` or `"۸۵۰"`).
   - Text & Number normalization (dates, times, currencies, percentages).
-- **Protocols:** REST (OpenAI-compatible) and WebSockets (real-time chunk and sentence streaming).
+- **Protocols & Compatibility:**
+  - REST (OpenAI-compatible) and WebSockets (real-time chunk and sentence streaming).
+  - Flexible routing supporting `/v1/audio/...`, `/api/v1/...`, `/v1/v1/...`, and WebSocket control handshakes.
 
 ---
 
@@ -68,6 +77,27 @@ Or install directly from GitHub:
 pip install git+https://github.com/mhosseinifar8/nava.git#subdirectory=nava_sdk
 ```
 
+*Note: Both `import nava` and `import nava_fa_speech` work interchangeably.*
+
+---
+
+## Docker Hub Official Images
+
+If you need to deploy the server backend, prebuilt images are available on Docker Hub:
+
+| Service | Docker Image | Port | Description |
+|---|---|---|---|
+| **STT Microservice** | [`mhosseinifar8/nava-stt:latest`](https://hub.docker.com/r/mhosseinifar8/nava-stt) | `8001` | FastConformer Shenava, Whisper-Turbo, Nemotron |
+| **TTS Microservice** | [`mhosseinifar8/nava-tts:latest`](https://hub.docker.com/r/mhosseinifar8/nava-tts) | `8002` | Piper Mana, Matcha-TTS, Ava-82M, Pocket-TTS & Voice Cloning |
+| **Unified Platform** | [`mhosseinifar8/nava:latest`](https://hub.docker.com/r/mhosseinifar8/nava) | `8000` | Complete platform with all STT and TTS engines |
+
+```bash
+# Pull images
+docker pull mhosseinifar8/nava-stt:latest
+docker pull mhosseinifar8/nava-tts:latest
+docker pull mhosseinifar8/nava:latest
+```
+
 ---
 
 ## Quick Start
@@ -80,6 +110,7 @@ from nava import NavaClient
 with NavaClient(stt_url="http://127.0.0.1:8001", tts_url="http://127.0.0.1:8002") as nava:
 # Option B (Unified Platform): Both on port 8000
 # with NavaClient(stt_url="http://127.0.0.1:8000", tts_url="http://127.0.0.1:8000") as nava:
+
     # 1. Transcribe Persian speech audio
     with open("input.pcm", "rb") as f:
         pcm_bytes = f.read()
@@ -155,7 +186,7 @@ Synthesizes Persian text into raw 16-bit PCM or WAV audio.
 ```python
 speech: SpeechResult = client.synthesize(
     text="کتاب خوب و خانه بزرگ در تاریخ 1403/08/18 ثبت شد.",
-    model="piper-mana-lca",             # piper-mana-lca, ava-82m, matcha-khadijah-fa-en, pocket-tts-farsi
+    model="piper-mana-lca",             # piper-mana-lca, ava-82m, matcha-musa-fa-en, matcha-khadijah-fa-en, pocket-tts-farsi
     voice="default",                    # Speaker name: mana, amir, gyro, ganji, ava, or a cloned voice_id
     speed=1.0,                          # 0.5 to 2.0
     g2p_mode="lca_albert",              # "lca_albert" | "homo_ge2pe" | "fast_espeak"
@@ -167,7 +198,7 @@ speech: SpeechResult = client.synthesize(
 # Access result fields
 raw_bytes = speech.pcm
 rate = speech.sample_rate    # 22050 or 24000
-engine = speech.engine       # e.g. "piper"
+engine = speech.engine       # e.g. "piper", "matcha", "ava"
 voice = speech.voice         # e.g. "mana"
 ```
 
@@ -212,7 +243,10 @@ import asyncio
 from nava import AsyncNavaClient
 
 async def main():
-    async with AsyncNavaClient() as nava:
+    async with AsyncNavaClient(
+        stt_url="http://127.0.0.1:8001",
+        tts_url="http://127.0.0.1:8002",
+    ) as nava:
         # Async REST transcription
         res = await nava.transcribe(pcm_bytes, model="shenava-koochik-ctc")
         print("Text:", res.text)
@@ -243,7 +277,7 @@ asyncio.run(main())
 Low-latency real-time Persian speech recognition with live partials and endpoint detection.
 
 #### Flow Protocol:
-1. **Connect:** Open WebSocket to `ws://<host>:<port>/v1/ws/stt`
+1. **Connect:** Open WebSocket to `ws://<host>:<port>/v1/ws/stt` (or `/ws/stt`)
 2. **Handshake (JSON):** Send configuration object:
    ```json
    {
@@ -283,20 +317,34 @@ Low-latency real-time Persian speech recognition with live partials and endpoint
 
 Pipelined text-to-speech where sentence $N+1$ G2P runs while sentence $N$ audio is synthesized and streamed, achieving **<100ms Time-To-First-Audio (TTFA)** on CPU.
 
-#### Flow Protocol:
-1. **Connect:** Open WebSocket to `ws://<host>:<port>/v1/ws/tts`
-2. **Send Text (JSON):**
-   ```json
-   {
-     "type": "text",
-     "text": "این جمله اول است که بلافاصله پخش می‌شود. این هم جمله دوم است.",
-     "model": "piper-mana-lca",
-     "voice": "mana",
-     "speed": 1.0,
-     "g2p_mode": "lca_albert"
-   }
-   ```
-3. **Receive Metadata (JSON):**
+#### Supported Handshake & Config Frames:
+Nava supports both initial configuration frames (without `text`) and direct text frames:
+
+**Option 1: Initial Config Frame (e.g. from client libraries):**
+```json
+{
+  "model": "matcha-musa-fa-en",
+  "voice": "default",
+  "speed": 1.0,
+  "g2p_mode": "lca_albert"
+}
+```
+*Server responds:* `{"status": "ok", "action": "configured", "model": "matcha-musa-fa-en"}`
+
+**Option 2: Text Frame with configuration:**
+```json
+{
+  "type": "text",
+  "text": "این جمله اول است که بلافاصله پخش می‌شود. این هم جمله دوم است.",
+  "model": "piper-mana-lca",
+  "voice": "mana",
+  "speed": 1.0,
+  "g2p_mode": "lca_albert"
+}
+```
+
+#### Stream Sequence:
+1. **Receive Metadata (JSON):**
    ```json
    {
      "status": "streaming",
@@ -305,9 +353,9 @@ Pipelined text-to-speech where sentence $N+1$ G2P runs while sentence $N$ audio 
      "sample_rate": 22050
    }
    ```
-4. **Receive Audio (Binary):** Receive raw 16-bit PCM binary frames for each sentence as it finishes.
-5. **Cancellation (Optional JSON):** Send `{"type": "cancel"}` at any time to immediately abort remaining sentences.
-6. **Receive Completion (JSON):**
+2. **Receive Audio (Binary):** Raw 16-bit PCM binary frames for each sentence as it finishes.
+3. **Cancellation (Optional JSON):** Send `{"type": "cancel"}` at any time to immediately abort remaining sentences.
+4. **Receive Completion (JSON):**
    ```json
    {"status": "completed", "type": "done"}
    ```
@@ -318,7 +366,7 @@ Pipelined text-to-speech where sentence $N+1$ G2P runs while sentence $N$ audio 
 
 ```javascript
 // Browser / Node.js Streaming STT Client
-const ws = new WebSocket("ws://127.0.0.1:8000/v1/ws/stt");
+const ws = new WebSocket("ws://127.0.0.1:8001/ws/stt");
 
 ws.onopen = () => {
   // 1. Send handshake
@@ -357,14 +405,14 @@ function stopRecording() {
 
 ## REST API Reference & cURL Manual
 
-Nava server exposes OpenAI-compatible REST endpoints with Persian extensions.
+Nava exposes OpenAI-compatible REST endpoints with Persian extensions.
 
 ### `POST /v1/audio/transcriptions` (STT)
-*(Alias: `POST /api/v1/transcriptions`)*
+*(Aliases: `/api/v1/transcriptions`, `/v1/v1/audio/transcriptions`)*
 
 #### Option A: Multipart Form Data
 ```bash
-curl -X POST "http://127.0.0.1:8000/v1/audio/transcriptions" \
+curl -X POST "http://127.0.0.1:8001/v1/audio/transcriptions" \
   -F "file=@audio.wav" \
   -F "model=shenava-koochik-ctc" \
   -F "enable_itn=true" \
@@ -374,7 +422,7 @@ curl -X POST "http://127.0.0.1:8000/v1/audio/transcriptions" \
 
 #### Option B: Raw 16-bit PCM Octet-Stream
 ```bash
-curl -X POST "http://127.0.0.1:8000/v1/audio/transcriptions?model=shenava-koochik-ctc&enable_itn=true" \
+curl -X POST "http://127.0.0.1:8001/v1/audio/transcriptions?model=shenava-koochik-ctc&enable_itn=true" \
   -H "Content-Type: application/octet-stream" \
   --data-binary "@audio.pcm"
 ```
@@ -396,15 +444,15 @@ curl -X POST "http://127.0.0.1:8000/v1/audio/transcriptions?model=shenava-koochi
 ---
 
 ### `POST /v1/audio/speech` (TTS)
-*(Alias: `POST /api/v1/speech`)*
+*(Aliases: `/api/v1/speech`, `/v1/v1/audio/speech`)*
 
 ```bash
-curl -X POST "http://127.0.0.1:8000/v1/audio/speech" \
+curl -X POST "http://127.0.0.1:8002/v1/audio/speech" \
   -H "Content-Type: application/json" \
   -d '{
     "input": "سلام به پروژه نوا، کیفیت استودیویی روی پردازنده معمولی.",
-    "model": "piper-mana-lca",
-    "voice": "mana",
+    "model": "matcha-musa-fa-en",
+    "voice": "default",
     "speed": 1.0,
     "g2p_mode": "lca_albert",
     "response_format": "wav"
@@ -414,7 +462,7 @@ curl -X POST "http://127.0.0.1:8000/v1/audio/speech" \
 
 **Request Parameters:**
 - `input` *(string, required)*: Persian text to synthesize (alias: `text`).
-- `model` *(string)*: `piper-mana-lca` (default), `ava-82m`, `matcha-khadijah-fa-en`, `pocket-tts-farsi`, `piper-voices-fa`.
+- `model` *(string)*: `piper-mana-lca` (default), `matcha-musa-fa-en`, `matcha-khadijah-fa-en`, `ava-82m`, `pocket-tts-farsi`, `piper-voices-fa`.
 - `voice` *(string)*: Speaker name (`mana`, `amir`, `gyro`, `ganji`, `ava`) or a cloned `voice_id`.
 - `speed` *(float)*: Speed factor from `0.5` to `2.0` (default: `1.0`).
 - `g2p_mode` *(string)*: `"lca_albert"` (default), `"homo_ge2pe"`, or `"fast_espeak"`.
@@ -429,7 +477,7 @@ curl -X POST "http://127.0.0.1:8000/v1/audio/speech" \
 Registers reference audio and caches conditioning embeddings on CPU.
 
 ```bash
-curl -X POST "http://127.0.0.1:8000/v1/voices/clone" \
+curl -X POST "http://127.0.0.1:8002/v1/voices/clone" \
   -F "file=@my_reference_sample.wav" \
   -F "name=speaker_ali"
 ```

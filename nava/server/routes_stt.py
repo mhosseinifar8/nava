@@ -26,6 +26,10 @@ def _parse_dict_or_json(val: Any) -> Any:
 
 @router.post("/v1/audio/transcriptions")
 @router.post("/api/v1/transcriptions")
+@router.post("/v1/v1/audio/transcriptions")
+@router.post("/v1/api/v1/transcriptions")
+@router.post("/transcriptions")
+@router.post("/audio/transcriptions")
 async def transcribe_audio(
     request: Request,
     file: UploadFile | None = File(None),
