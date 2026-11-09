@@ -30,12 +30,12 @@ jobs:
       matrix:
         include:
           - name: nava-stt
-            context: ./nava-stt
+            context: .
             file: ./nava-stt/Dockerfile
             image_names: "nava-stt"
 
           - name: nava-tts
-            context: ./nava-tts
+            context: .
             file: ./nava-tts/Dockerfile
             image_names: "nava-tts"
 

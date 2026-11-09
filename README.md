@@ -52,20 +52,33 @@ pip install -e ./nava_sdk
 
 ## Model Downloader CLI
 
+The built-in model downloader CLI verifies checksums, supports resuming interrupted downloads, and includes full proxy and Hugging Face authentication support.
+
 ```bash
 # List all 21 models and their installation status
-nava-download --list
+nava-download list
 
-# Download by pre-configured profile
-nava-download --profile minimal         # Fast starter set: Koochik CTC, Albert Ezafe, Mana Piper, Pocket
-nava-download --profile realtime        # Low-latency streaming: Rizeh 32M, Nemotron, Albert Ezafe, Mana
-nava-download --profile high-accuracy   # Highest precision: Koochik RNNT, Whisper Turbo Sherpa, Ava-82M
-nava-download --profile all             # Complete collection
+# Download by pre-configured profile (positional or --profile)
+nava-download minimal         # Fast starter set: Koochik CTC, Albert Ezafe, Mana Piper, Pocket
+nava-download realtime        # Low-latency streaming: Rizeh 32M, Nemotron, Albert Ezafe, Mana (~500 MB)
+nava-download high-accuracy   # Highest precision: Koochik RNNT, Whisper Turbo Sherpa, Ava-82M
+nava-download all             # Complete collection
 
 # Download a specific model
-nava-download --model shenava-koochik-ctc
-nava-download --model piper-mana-lca
-nava-download --model ava-82m
+nava-download whisper-large-v3
+nava-download piper-mana-lca
+nava-download ava-82m
+
+# Download behind a proxy (HTTP, HTTPS, or SOCKS5)
+nava-download realtime --proxy http://127.0.0.1:10809
+nava-download realtime --proxy socks5://127.0.0.1:10808
+
+# Download with Hugging Face Access Token (for gated models or higher rate limits)
+nava-download all --hf-token hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# Download from inside a running Docker container
+docker compose exec nava-stt nava-download whisper-large-v3
+docker compose exec nava-tts nava-download piper-mana-lca
 ```
 
 ---
@@ -179,15 +192,29 @@ Nava provides prebuilt Docker containers published automatically to Docker Hub o
 ### Running with Docker Compose
 
 ```bash
-# 1. Download models to ./models
-nava-download --profile minimal
+# 1. Download models to ./models (or download from inside container)
+nava-download minimal
 
-# 2. Start STT & TTS microservices
+# 2. Start STT & TTS microservices (ports 8001 & 8002)
 docker compose up -d
 
-# Or start the unified server
+# Or start the unified server (port 8000)
 docker compose --profile unified up -d
+
+# 3. (Optional) Download models from inside the running container
+docker compose exec nava-stt nava-download whisper-large-v3
+docker compose exec nava-tts nava-download piper-mana-lca
 ```
+
+#### Proxy & Restricted Network Configuration
+If you are behind a proxy or firewall (e.g. in Iran), configure `.env`:
+```bash
+# In .env:
+HTTP_PROXY=http://192.168.14.207:10809
+HTTPS_PROXY=http://192.168.14.207:10809
+HF_TOKEN=hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+*(Note: Inside Docker containers, use your host LAN IP or `host.docker.internal` instead of `127.0.0.1`)*
 
 ### Pulling Prebuilt Images from Docker Hub
 
@@ -200,20 +227,20 @@ docker pull <DOCKERHUB_USERNAME>/nava:latest
 # Run the Unified Server container
 docker run -d \
   -p 8000:8000 \
-  -v $(pwd)/models:/models:ro \
+  -v $(pwd)/models:/models \
   --name nava \
   <DOCKERHUB_USERNAME>/nava:latest
 ```
 
 ### Automated CI/CD (GitHub Actions)
 
-Every push to `main` or semantic release tag (`v*.*.*`) automatically triggers the `.github/workflows/docker-publish.yml` pipeline to build and publish multi-service images to Docker Hub.
+Every push to `main` or semantic release tag (`v*.*.*`) automatically triggers the `.github/workflows/docker-publish.yml` pipeline to build `linux/amd64` images and publish them to Docker Hub.
 
 To enable publishing, configure the following in **GitHub Repo > Settings > Secrets and variables > Actions**:
 - `DOCKERHUB_USERNAME`: Your Docker Hub username or organization.
 - `DOCKERHUB_TOKEN`: Your Docker Hub Personal Access Token (PAT) with Read & Write permissions.
 
-You can also manually build and publish locally using either the Python or Bash helper scripts:
+You can also manually build and publish locally using either the Python or Bash helper scripts (defaulting to `linux/amd64`):
 ```bash
 # Using Python:
 python3 scripts/docker_build_and_push.py --username <DOCKERHUB_USERNAME> --push
@@ -224,7 +251,21 @@ python3 scripts/docker_build_and_push.py --username <DOCKERHUB_USERNAME> --push
 
 ---
 
-## Running Tests
+## Service Testing & Health Verification
+
+Nava includes automated end-to-end testing scripts to verify REST APIs, WebSockets, text synthesis, and audio transcription across your network:
+
+```bash
+# Run full E2E test (Health + REST TTS + WS TTS + REST STT + WS STT) against target IP:
+python3 scripts/test_nava_services.py --host 192.168.14.207
+
+# Or run quick cURL tests:
+./scripts/test_curl.sh 192.168.14.207
+```
+
+---
+
+## Running Unit Tests
 
 ```bash
 # Run unit tests (83 passing tests in ~0.3s, no model download required)

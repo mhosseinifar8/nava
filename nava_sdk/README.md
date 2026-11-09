@@ -31,6 +31,7 @@ The official Python SDK and client library for **Nava (نوا)** — an offline,
   - [Pre-TTS G2P & Ezafe Detection](#pre-tts-g2p--ezafe-detection)
   - [Custom Dictionaries & Hotwords](#custom-dictionaries--hotwords)
 - [Error Handling](#error-handling)
+- [Testing & Service Verification](#testing--service-verification)
 - [License](#license)
 
 ---
@@ -74,8 +75,11 @@ pip install git+https://github.com/mhosseinifar8/nava.git#subdirectory=nava_sdk
 ```python
 from nava import NavaClient
 
-# Connect to Nava services (default: http://127.0.0.1:8001 for STT, 8002 for TTS, or unified 8000)
+# Connect to Nava services:
+# Option A (Microservices): STT on 8001, TTS on 8002
 with NavaClient(stt_url="http://127.0.0.1:8001", tts_url="http://127.0.0.1:8002") as nava:
+# Option B (Unified Platform): Both on port 8000
+# with NavaClient(stt_url="http://127.0.0.1:8000", tts_url="http://127.0.0.1:8000") as nava:
     # 1. Transcribe Persian speech audio
     with open("input.pcm", "rb") as f:
         pcm_bytes = f.read()
@@ -113,11 +117,15 @@ Both `import nava` and `import nava_fa_speech` are fully supported.
 ```python
 from nava import NavaClient, TranscriptionResult, SpeechResult
 
+# Microservice deployment (default ports):
 client = NavaClient(
-    stt_url="http://127.0.0.1:8001",  # Or unified server URL: http://127.0.0.1:8000
+    stt_url="http://127.0.0.1:8001",
     tts_url="http://127.0.0.1:8002",
     timeout=120.0,
 )
+
+# Unified server deployment (single port 8000):
+# client = NavaClient(stt_url="http://127.0.0.1:8000", tts_url="http://127.0.0.1:8000")
 ```
 
 #### 1. `client.transcribe(...)`
@@ -485,6 +493,20 @@ with NavaClient() as nava:
     except NavaServiceError as exc:
         print("Caught Nava error:", exc)
         # e.g. "Nava returned HTTP 422: audio is shorter than 100 ms at 16 kHz"
+```
+
+---
+
+## Testing & Service Verification
+
+You can verify your live STT & TTS deployment (health, REST synthesis, WebSocket streaming, and transcription) with the included automated testing script:
+
+```bash
+# Test against your server host / IP (default ports 8001 STT & 8002 TTS):
+python3 scripts/test_nava_services.py --host 192.168.14.207
+
+# Or test the unified platform (port 8000):
+python3 scripts/test_nava_services.py --host 192.168.14.207 --unified-port 8000
 ```
 
 ---

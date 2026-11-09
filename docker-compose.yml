@@ -16,6 +16,13 @@ services:
       OMP_NUM_THREADS: ${STT_OMP_THREADS:-4}
       MKL_NUM_THREADS: ${STT_OMP_THREADS:-4}
       OPENBLAS_NUM_THREADS: ${STT_OMP_THREADS:-4}
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      ALL_PROXY: ${ALL_PROXY:-}
+      http_proxy: ${HTTP_PROXY:-}
+      https_proxy: ${HTTPS_PROXY:-}
+      all_proxy: ${ALL_PROXY:-}
+      HF_TOKEN: ${HF_TOKEN:-}
     volumes: [./models:/models]
     ports: 
         - "8001:8001"
@@ -43,6 +50,13 @@ services:
       OPENBLAS_NUM_THREADS: ${TTS_OMP_THREADS:-4}
       HF_HUB_OFFLINE: "0"
       TRANSFORMERS_OFFLINE: "0"
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      ALL_PROXY: ${ALL_PROXY:-}
+      http_proxy: ${HTTP_PROXY:-}
+      https_proxy: ${HTTPS_PROXY:-}
+      all_proxy: ${ALL_PROXY:-}
+      HF_TOKEN: ${HF_TOKEN:-}
     volumes: [./models:/models]
     ports:
         - "8002:8002"
@@ -61,6 +75,13 @@ services:
     image: ${NAVA_SERVER_IMAGE:-nava/server:local}
     environment:
       NAVA_MODELS_DIR: /models
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      ALL_PROXY: ${ALL_PROXY:-}
+      http_proxy: ${HTTP_PROXY:-}
+      https_proxy: ${HTTPS_PROXY:-}
+      all_proxy: ${ALL_PROXY:-}
+      HF_TOKEN: ${HF_TOKEN:-}
     volumes: [./models:/models]
     ports:
       - "8000:8000"
