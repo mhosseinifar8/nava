@@ -893,6 +893,10 @@ ALIASES: dict[str, str] = {
     "olmocr": "olmocr-farsi-lora",
     # Preprocessor
     "albert": "persian-ezafe-albert",
+    # OpenAI standard API aliases for Open WebUI / Ollama WebUI / third-party clients
+    "whisper-1": "parakeet-ctc-109m-farsi",
+    "tts-1": "piper-mana-lca",
+    "tts-1-hd": "piper-mana-lca",
 }
 
 

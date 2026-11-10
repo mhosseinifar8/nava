@@ -31,7 +31,7 @@ class SpeechRequest(BaseModel):
     reference_audio_base64: str | None = Field(
         None, description="Optional 5-30s reference audio for zero-shot voice cloning"
     )
-    response_format: Literal["pcm", "wav", "mp3"] = Field("pcm", description="Output audio format")
+    response_format: str = Field("pcm", description="Output audio format (pcm, wav, mp3, opus)")
 
 
 @router.post("/v1/audio/speech")
@@ -83,9 +83,11 @@ async def generate_speech(payload: SpeechRequest) -> Response:
         "X-Nava-Voice": result.voice,
     }
 
-    if payload.response_format == "wav":
+    fmt = payload.response_format.lower() if payload.response_format else "pcm"
+    if fmt in ("wav", "mp3", "opus", "aac", "flac"):
         wav_bytes = result.to_wav()
-        return Response(content=wav_bytes, media_type="audio/wav", headers=headers)
+        media_type = "audio/wav" if fmt == "wav" else "audio/mpeg"
+        return Response(content=wav_bytes, media_type=media_type, headers=headers)
     else:
         # Default PCM L16
         media_type = f"audio/L16;rate={result.sample_rate};channels=1"
