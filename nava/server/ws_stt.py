@@ -1,14 +1,24 @@
-"""Real-Time Streaming WebSocket Speech-to-Text Endpoint."""
+"""Real-Time Streaming WebSocket Speech-to-Text Endpoint.
+
+Features:
+- Persistent connection keepalive with heartbeat ping/pong handling
+- Offloads all CPU-bound inference to pre-warmed thread pool to eliminate event loop blocking
+- Clean session reset between successive utterances on the same socket
+- Graceful recoverable error handling
+"""
 from __future__ import annotations
 
 import json
+import logging
 import time
 from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from ..engines.factory import get_stt_engine
+from ..runtime.cpu_tuning import run_in_cpu_pool
 
+logger = logging.getLogger("nava.ws_stt")
 router = APIRouter(tags=["STT Streaming"])
 
 
@@ -28,7 +38,7 @@ router = APIRouter(tags=["STT Streaming"])
 @router.websocket("/v1/ws")
 @router.websocket("/ws")
 async def websocket_stt_endpoint(ws: WebSocket) -> None:
-    """Real-Time Streaming Speech-to-Text WebSocket handler."""
+    """Real-Time Streaming Speech-to-Text WebSocket handler with keep-alive."""
     await ws.accept()
 
     config: dict[str, Any] = {
@@ -72,13 +82,16 @@ async def websocket_stt_endpoint(ws: WebSocket) -> None:
             if frame.get("bytes") is not None:
                 chunk = frame["bytes"]
                 if len(chunk) == 0:
-                    # Empty binary frame indicates EOS
                     is_eos = True
                 else:
                     accumulated_pcm.extend(chunk)
 
                     if engine is None:
-                        engine = get_stt_engine(config["model"])
+                        try:
+                            engine = get_stt_engine(config["model"])
+                        except Exception as e:
+                            await ws.send_json({"status": "error", "error": str(e), "recoverable": True})
+                            continue
 
                     if hasattr(engine, "feed_audio"):
                         if stream_obj is None:
@@ -86,8 +99,9 @@ async def websocket_stt_endpoint(ws: WebSocket) -> None:
                                 hotwords=config["hotwords"],
                                 latency_ms=config["latency_ms"],
                             )
-                        engine.feed_audio(stream_obj, chunk)
-                        partial_text = engine.get_partial(stream_obj)
+                        # Offload audio feeding and partial extraction to thread pool
+                        await run_in_cpu_pool(engine.feed_audio, stream_obj, chunk)
+                        partial_text = await run_in_cpu_pool(engine.get_partial, stream_obj)
                         if partial_text:
                             await ws.send_json({"type": "partial", "text": partial_text})
                     continue
@@ -99,59 +113,76 @@ async def websocket_stt_endpoint(ws: WebSocket) -> None:
                 try:
                     msg = json.loads(raw_text)
                 except json.JSONDecodeError:
-                    await ws.send_json({"status": "error", "error": "Control frame must be valid JSON"})
+                    await ws.send_json({"status": "error", "error": "Control frame must be valid JSON", "recoverable": True})
                     continue
 
                 if isinstance(msg, dict):
-                    action = msg.get("action")
                     msg_type = msg.get("type")
+                    action = msg.get("action")
                     event = msg.get("event")
+
+                    # Heartbeat keepalive ping/pong
+                    if msg_type == "ping" or action == "ping":
+                        await ws.send_json({"type": "pong", "status": "ok"})
+                        continue
+
                     if action in ("eos", "eof", "close") or msg_type in ("eos", "done", "close") or event == "eos" or msg.get("eof"):
                         is_eos = True
 
             # Check if this is an EOF / EOS event
             if is_eos:
                 if engine is None:
-                    engine = get_stt_engine(config["model"])
+                    try:
+                        engine = get_stt_engine(config["model"])
+                    except Exception as e:
+                        await ws.send_json({"status": "error", "error": str(e), "recoverable": True})
+                        accumulated_pcm.clear()
+                        stream_obj = None
+                        continue
 
-                if hasattr(engine, "get_final") and stream_obj is not None:
-                    raw, itn = engine.get_final(stream_obj, enable_itn=config["enable_itn"])
-                    duration_s = max(len(accumulated_pcm) / 32000.0, 0.01)
-                    elapsed = time.perf_counter() - t_start
-                    rtf = round(elapsed / duration_s, 3)
+                try:
+                    if hasattr(engine, "get_final") and stream_obj is not None:
+                        raw, itn = await run_in_cpu_pool(engine.get_final, stream_obj, enable_itn=config["enable_itn"])
+                        duration_s = max(len(accumulated_pcm) / 32000.0, 0.01)
+                        elapsed = time.perf_counter() - t_start
+                        rtf = round(elapsed / duration_s, 3)
 
-                    # Send unified modern final event
-                    await ws.send_json({
-                        "type": "final",
-                        "status": "success",
-                        "text": raw,
-                        "itn_text": itn,
-                        "rtf": rtf,
-                        "segments": [{"start": 0.0, "end": round(duration_s, 3), "text": itn}],
-                        "language_prob": 0.99,
-                    })
-                else:
-                    # Non-streaming engine fallback
-                    res = engine.transcribe(
-                        bytes(accumulated_pcm),
-                        hotwords=config["hotwords"],
-                        custom_replacements=config["custom_dictionary"],
-                        enable_itn=config["enable_itn"],
-                        initial_prompt=config.get("initial_prompt"),
-                    )
-                    await ws.send_json(res.to_dict())
+                        await ws.send_json({
+                            "type": "final",
+                            "status": "success",
+                            "text": raw,
+                            "itn_text": itn,
+                            "rtf": rtf,
+                            "segments": [{"start": 0.0, "end": round(duration_s, 3), "text": itn}],
+                            "language_prob": 0.99,
+                        })
+                    else:
+                        # Non-streaming engine fallback
+                        pcm_bytes = bytes(accumulated_pcm)
+                        res = await run_in_cpu_pool(
+                            engine.transcribe,
+                            pcm_bytes,
+                            hotwords=config["hotwords"],
+                            custom_replacements=config["custom_dictionary"],
+                            enable_itn=config["enable_itn"],
+                            initial_prompt=config.get("initial_prompt"),
+                        )
+                        await ws.send_json(res.to_dict())
+                except Exception as exc:
+                    logger.warning(f"WebSocket STT transcription warning: {exc}")
+                    await ws.send_json({"status": "error", "error": str(exc), "recoverable": True})
 
+                # Clean reset for next utterance
                 accumulated_pcm.clear()
                 stream_obj = None
                 t_start = time.perf_counter()
                 continue
 
-            # Otherwise, update configuration handshake
+            # Configuration handshake
             for k in ("model", "sample_rate", "latency_ms", "enable_itn", "hotwords", "custom_dictionary", "initial_prompt"):
                 if k in msg and msg[k] is not None:
                     config[k] = msg[k]
 
-            # Re-initialize engine if model changed
             try:
                 engine = get_stt_engine(config["model"])
                 stream_obj = None
@@ -162,8 +193,7 @@ async def websocket_stt_endpoint(ws: WebSocket) -> None:
                     "latency_ms": config["latency_ms"],
                 })
             except Exception as e:
-                await ws.send_json({"type": "error", "status": "error", "error": str(e)})
+                await ws.send_json({"type": "error", "status": "error", "error": str(e), "recoverable": True})
 
     except WebSocketDisconnect:
         return
-

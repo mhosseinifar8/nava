@@ -215,6 +215,22 @@ class NavaClient:
         check(response)
         return response.json()
 
+    def analyze_sentiment(self, text: str) -> dict[str, Any]:
+        """Classify Persian sentiment (< 15ms CPU execution)."""
+        url = f"{self.stt_url}/v1/nlp/sentiment"
+        response = self.http.post(url, json={"text": text})
+        check(response)
+        return response.json()
+
+    def ocr_document(self, image_bytes: bytes, prompt: str | None = None) -> dict[str, Any]:
+        """Perform Persian document OCR via olmOCR-Farsi LoRA."""
+        url = f"{self.stt_url}/v1/ocr/farsi"
+        files = {"file": ("document.png", image_bytes, "image/png")}
+        data = {"prompt": prompt} if prompt else {}
+        response = self.http.post(url, files=files, data=data)
+        check(response)
+        return response.json()
+
 
 class AsyncNavaClient:
     """Asynchronous client for Nava Persian Speech Services."""
@@ -343,6 +359,22 @@ class AsyncNavaClient:
         check(response)
         return response.json()
 
+    async def analyze_sentiment(self, text: str) -> dict[str, Any]:
+        """Classify Persian sentiment (< 15ms CPU execution)."""
+        url = f"{self.stt_url}/v1/nlp/sentiment"
+        response = await self.http.post(url, json={"text": text})
+        check(response)
+        return response.json()
+
+    async def ocr_document(self, image_bytes: bytes, prompt: str | None = None) -> dict[str, Any]:
+        """Perform Persian document OCR via olmOCR-Farsi LoRA."""
+        url = f"{self.stt_url}/v1/ocr/farsi"
+        files = {"file": ("document.png", image_bytes, "image/png")}
+        data = {"prompt": prompt} if prompt else {}
+        response = await self.http.post(url, files=files, data=data)
+        check(response)
+        return response.json()
+
     async def transcribe_ws(
         self,
         pcm: bytes,
@@ -375,6 +407,8 @@ class AsyncNavaClient:
                 if isinstance(frame, bytes):
                     continue
                 body = json.loads(frame)
+                if body.get("type") == "pong" or body.get("status") == "pong":
+                    continue
                 if body.get("status") == "error" or body.get("type") == "error":
                     raise NavaServiceError(body.get("error", "WebSocket error"))
                 if "text" in body and body.get("type") in ("final", None):
@@ -433,6 +467,8 @@ class AsyncNavaClient:
                     continue
 
                 body = json.loads(frame)
+                if body.get("type") == "pong" or body.get("status") == "pong":
+                    continue
                 if body.get("status") == "error":
                     raise NavaServiceError(body.get("error", "WebSocket error"))
                 if body.get("status") == "streaming":

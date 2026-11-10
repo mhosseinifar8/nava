@@ -1,6 +1,6 @@
 """Nava Model Registry.
 
-Defines all supported CPU-optimized Persian STT, TTS, G2P, and Voice Cloning models,
+Defines all supported CPU-optimized Persian STT, TTS, G2P, NLP, and OCR models,
 their metadata, Hugging Face repositories, file mappings, and profile memberships.
 """
 from __future__ import annotations
@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
-ModelType = Literal["stt", "tts", "g2p", "vocoder"]
+ModelType = Literal["stt", "tts", "g2p", "vocoder", "nlp", "ocr"]
 ProfileName = Literal["minimal", "realtime", "high-accuracy", "all"]
 
 
@@ -53,7 +53,6 @@ class ModelInfo:
         for mf in self.files:
             rel = mf.target_path or mf.filename
             p = base / rel
-            # Must be an actual regular file with non-zero size (not just an empty directory or 0-byte file)
             if not p.is_file() or p.stat().st_size == 0:
                 return False
             if mf.size_bytes and p.stat().st_size != mf.size_bytes:
@@ -109,6 +108,146 @@ def _register(model: ModelInfo) -> None:
 # ------------------------------------------------------------------------------
 # A. Persian STT Models (CPU-Optimized)
 # ------------------------------------------------------------------------------
+
+_register(
+    ModelInfo(
+        id="parakeet-ctc-109m-farsi",
+        name="Parakeet-CTC 109M Persian (Primary Ultra-Fast)",
+        type="stt",
+        repo_id="Peacockery/parakeet-ctc-109m-farsi",
+        files=(
+            ModelFile("model.onnx"),
+            ModelFile("tokens.txt"),
+        ),
+        size_mb=218.0,
+        ram_mb=350.0,
+        rtf_class=0.015,
+        streaming=True,
+        hotwords=False,
+        sample_rate=16000,
+        profiles=("minimal", "realtime", "all"),
+        description="Primary Ultra-Fast <150ms latency CTC Persian ASR engine",
+        engine_name="parakeet_ctc",
+    )
+)
+
+_register(
+    ModelInfo(
+        id="fastconformer-hybrid-large",
+        name="NVIDIA FastConformer Hybrid Large (CTC + RNNT)",
+        type="stt",
+        repo_id="nvidia/stt_fa_fastconformer_hybrid_large",
+        files=(
+            ModelFile("model.onnx"),
+            ModelFile("tokens.txt"),
+        ),
+        size_mb=460.0,
+        ram_mb=900.0,
+        rtf_class=0.045,
+        streaming=True,
+        hotwords=True,
+        sample_rate=16000,
+        profiles=("high-accuracy", "all"),
+        description="NVIDIA Hybrid FastConformer with default 3x CTC CPU speedup and RNNT accuracy toggle",
+        engine_name="fastconformer_hybrid",
+    )
+)
+
+_register(
+    ModelInfo(
+        id="nemotron-streaming-farsi",
+        name="Nemotron Streaming Persian ASR",
+        type="stt",
+        repo_id="mehdi-hf/nemotron-asr-streaming-farsi",
+        files=(
+            ModelFile("encoder.int8.onnx"),
+            ModelFile("decoder.int8.onnx"),
+            ModelFile("joiner.int8.onnx"),
+            ModelFile("tokens.txt"),
+        ),
+        size_mb=120.0,
+        ram_mb=250.0,
+        rtf_class=0.035,
+        streaming=True,
+        hotwords=True,
+        sample_rate=16000,
+        profiles=("realtime", "all"),
+        description="Mehdi-HF Nemotron streaming Persian ASR (1120ms chunk)",
+        engine_name="nemotron_streaming",
+    )
+)
+# Also register under full name mehdi-hf/nemotron-asr-streaming-farsi
+_register(
+    ModelInfo(
+        id="nemotron-asr-streaming-farsi",
+        name="Nemotron Streaming Persian ASR",
+        type="stt",
+        repo_id="mehdi-hf/nemotron-asr-streaming-farsi",
+        files=(
+            ModelFile("encoder.int8.onnx"),
+            ModelFile("decoder.int8.onnx"),
+            ModelFile("joiner.int8.onnx"),
+            ModelFile("tokens.txt"),
+        ),
+        size_mb=120.0,
+        ram_mb=250.0,
+        rtf_class=0.035,
+        streaming=True,
+        hotwords=True,
+        sample_rate=16000,
+        profiles=("realtime", "all"),
+        description="Mehdi-HF Nemotron streaming Persian ASR (1120ms chunk)",
+        engine_name="nemotron_streaming",
+    )
+)
+
+_register(
+    ModelInfo(
+        id="nemotron-streaming-podcast",
+        name="Nemotron Streaming Persian Podcast ASR",
+        type="stt",
+        repo_id="MohammadGholizadeh/nemotron-asr-streaming-farsi-podcast",
+        files=(
+            ModelFile("encoder.int8.onnx"),
+            ModelFile("decoder.int8.onnx"),
+            ModelFile("joiner.int8.onnx"),
+            ModelFile("tokens.txt"),
+        ),
+        size_mb=120.0,
+        ram_mb=250.0,
+        rtf_class=0.035,
+        streaming=True,
+        hotwords=True,
+        sample_rate=16000,
+        profiles=("realtime", "high-accuracy", "all"),
+        description="Gholizadeh Nemotron streaming conversational & podcast ASR",
+        engine_name="nemotron_streaming",
+    )
+)
+
+_register(
+    ModelInfo(
+        id="whisper-large-v3-farsi-cv17",
+        name="Whisper Large-v3 Persian CV17 (CTranslate2 INT8)",
+        type="stt",
+        repo_id="mohammadjavadnasri/whisper-large-v3-farsi-cv17",
+        files=(
+            ModelFile("model.bin"),
+            ModelFile("tokenizer.json"),
+            ModelFile("config.json"),
+            ModelFile("vocabulary.json"),
+        ),
+        size_mb=1550.0,
+        ram_mb=2400.0,
+        rtf_class=0.11,
+        streaming=False,
+        hotwords=True,
+        sample_rate=16000,
+        profiles=("high-accuracy", "all"),
+        description="Fine-tuned Whisper Large-v3 on Common Voice 17 with INT8 CPU optimization",
+        engine_name="whisper_faster",
+    )
+)
 
 _register(
     ModelInfo(
@@ -229,30 +368,6 @@ _register(
 
 _register(
     ModelInfo(
-        id="nemotron-streaming-farsi",
-        name="Nemotron Streaming Persian 1120ms",
-        type="stt",
-        repo_id="mentisialog/sherpa-onnx-nemotron-asr-streaming-farsi-1120ms-int8",
-        files=(
-            ModelFile("encoder.int8.onnx"),
-            ModelFile("decoder.int8.onnx"),
-            ModelFile("joiner.int8.onnx"),
-            ModelFile("tokens.txt"),
-        ),
-        size_mb=120.0,
-        ram_mb=250.0,
-        rtf_class=0.035,
-        streaming=True,
-        hotwords=True,
-        sample_rate=16000,
-        profiles=("realtime", "all"),
-        description="Nemotron 1120ms chunk streaming Persian ASR",
-        engine_name="nemotron_streaming",
-    )
-)
-
-_register(
-    ModelInfo(
         id="whisper-turbo-persian-sherpa",
         name="Whisper Large-v3-Turbo Persian (Sherpa Hybrid)",
         type="stt",
@@ -366,7 +481,7 @@ _register(
 )
 
 # ------------------------------------------------------------------------------
-# B. Persian G2P (Ezafe & Homograph) Preprocessor Models
+# B. Persian G2P Preprocessor Models
 # ------------------------------------------------------------------------------
 
 _register(
@@ -434,6 +549,117 @@ _register(
 
 _register(
     ModelInfo(
+        id="pocket-tts-farsi-v2",
+        name="Pocket-TTS Farsi v2 (FlowLM 24kHz)",
+        type="tts",
+        repo_id="mehdi-hf/pocket-tts-farsi-v2",
+        files=(
+            ModelFile("model.yaml"),
+            ModelFile("model.safetensors"),
+            ModelFile("tokenizer_ph.model"),
+        ),
+        size_mb=440.0,
+        ram_mb=850.0,
+        rtf_class=0.15,
+        streaming=True,
+        voice_cloning=True,
+        sample_rate=24000,
+        profiles=("minimal", "realtime", "high-accuracy", "all"),
+        description="24kHz FlowLM + Kyutai Mimi v2 with superior prosody and zero-shot voice cloning",
+        engine_name="pocket",
+        metadata={
+            "characters": ["ali", "maryam", "reza", "sara", "nima", "parisa", "omid", "zahra", "kian", "mina", "default"]
+        },
+    )
+)
+
+_register(
+    ModelInfo(
+        id="pocket-tts-farsi",
+        name="Pocket-TTS Farsi v1 (Direct Script)",
+        type="tts",
+        repo_id="mehdi-hf/pocket-tts-farsi",
+        files=(
+            ModelFile("model.yaml"),
+            ModelFile("model.safetensors"),
+            ModelFile("tokenizer_ph.model"),
+        ),
+        size_mb=440.0,
+        ram_mb=850.0,
+        rtf_class=0.15,
+        streaming=True,
+        voice_cloning=True,
+        sample_rate=24000,
+        profiles=("minimal", "all"),
+        description="24kHz FlowLM Persian direct script TTS with 10 built-in characters",
+        engine_name="pocket",
+    )
+)
+
+_register(
+    ModelInfo(
+        id="chatterbox-tts-persian-gguf",
+        name="Chatterbox TTS Persian GGUF",
+        type="tts",
+        repo_id="mup99ma/Chatterbox-TTS-Persian-gguf",
+        files=(
+            ModelFile("model.gguf"),
+        ),
+        size_mb=320.0,
+        ram_mb=650.0,
+        rtf_class=0.08,
+        streaming=True,
+        sample_rate=24000,
+        profiles=("realtime", "all"),
+        description="GGUF-quantized Chatterbox Persian TTS via llama-cpp-python with mlock on CPU",
+        engine_name="chatterbox_gguf",
+    )
+)
+
+_register(
+    ModelInfo(
+        id="chatterbox-tts-persian-mazrba",
+        name="Chatterbox TTS Persian GGUF (Mazrba)",
+        type="tts",
+        repo_id="mazrba/Chatterbox-TTS-Persian-gguf",
+        files=(
+            ModelFile("model.gguf"),
+        ),
+        size_mb=320.0,
+        ram_mb=650.0,
+        rtf_class=0.08,
+        streaming=True,
+        sample_rate=24000,
+        profiles=("all",),
+        description="Alternative GGUF-quantized Chatterbox Persian model",
+        engine_name="chatterbox_gguf",
+    )
+)
+
+_register(
+    ModelInfo(
+        id="chatterbox-tts-persian-torch",
+        name="Chatterbox TTS Persian PyTorch",
+        type="tts",
+        repo_id="Thomcles/Chatterbox-TTS-Persian-Farsi",
+        files=(
+            ModelFile("model.safetensors"),
+            ModelFile("config.json"),
+            ModelFile("tokenizer.json"),
+        ),
+        size_mb=680.0,
+        ram_mb=1200.0,
+        rtf_class=0.12,
+        streaming=True,
+        sample_rate=24000,
+        profiles=("high-accuracy", "all"),
+        description="PyTorch Chatterbox Persian TTS with AVX-512 bfloat16 / int8 dynamic quantization",
+        engine_name="chatterbox_torch",
+    )
+)
+
+_register(
+    ModelInfo(
         id="piper-mana-lca",
         name="Mana Persian Piper (LCA)",
         type="tts",
@@ -479,14 +705,7 @@ _register(
         description="Multi-speaker Persian Piper voices (amir, gyro, ganji, ganji_adabi, reza_ibrahim, haaniye)",
         engine_name="piper",
         metadata={
-            "speakers": [
-                "amir",
-                "gyro",
-                "ganji",
-                "ganji_adabi",
-                "reza_ibrahim",
-                "haaniye_low",
-            ]
+            "speakers": ["amir", "gyro", "ganji", "ganji_adabi", "reza_ibrahim", "haaniye_low"]
         },
     )
 )
@@ -531,7 +750,7 @@ _register(
         size_mb=130.0,
         ram_mb=400.0,
         rtf_class=0.08,
-        streaming=False,
+        streaming=True,
         bilingual_en=True,
         sample_rate=22050,
         profiles=("all",),
@@ -559,51 +778,13 @@ _register(
         size_mb=130.0,
         ram_mb=400.0,
         rtf_class=0.08,
-        streaming=False,
+        streaming=True,
         bilingual_en=True,
         sample_rate=22050,
         profiles=("all",),
         description="Bilingual Persian-English male flow-matching TTS with Universal HiFi-GAN",
         engine_name="matcha",
         metadata={"gender": "male"},
-    )
-)
-
-_register(
-    ModelInfo(
-        id="pocket-tts-farsi",
-        name="Pocket-TTS Farsi v2 (with Voice Cloning)",
-        type="tts",
-        repo_id="mehdi-hf/pocket-tts-farsi-v2",
-        files=(
-            ModelFile("model.yaml"),
-            ModelFile("model.safetensors"),
-            ModelFile("tokenizer_ph.model"),
-        ),
-        size_mb=440.0,
-        ram_mb=850.0,
-        rtf_class=0.15,
-        streaming=True,
-        voice_cloning=True,
-        sample_rate=24000,
-        profiles=("minimal", "high-accuracy", "all"),
-        description="24kHz FlowLM + Kyutai Mimi with zero-shot voice cloning and 10 built-in characters",
-        engine_name="pocket",
-        metadata={
-            "characters": [
-                "ali",
-                "maryam",
-                "reza",
-                "sara",
-                "nima",
-                "parisa",
-                "omid",
-                "zahra",
-                "kian",
-                "mina",
-                "default",
-            ]
-        },
     )
 )
 
@@ -630,30 +811,104 @@ _register(
     )
 )
 
+# ------------------------------------------------------------------------------
+# D. Specialized Persian NLP & Vision/OCR Models
+# ------------------------------------------------------------------------------
+
+_register(
+    ModelInfo(
+        id="snappfood-sentiment-analysis",
+        name="Snappfood Persian Sentiment Analysis",
+        type="nlp",
+        repo_id="ParsiAI/snappfood-sentiment-analysis",
+        files=(
+            ModelFile("model.onnx"),
+            ModelFile("config.json"),
+            ModelFile("tokenizer.json"),
+        ),
+        size_mb=110.0,
+        ram_mb=180.0,
+        rtf_class=0.005,
+        streaming=False,
+        profiles=("all",),
+        description="Low-latency Persian text sentiment classification (< 15ms ONNX INT8)",
+        engine_name="snappfood_sentiment",
+    )
+)
+
+_register(
+    ModelInfo(
+        id="olmocr-farsi-lora",
+        name="olmOCR Farsi LoRA Document OCR",
+        type="ocr",
+        repo_id="larshiakzemil/olmocr-farsi-lora",
+        files=(
+            ModelFile("adapter_model.safetensors"),
+            ModelFile("adapter_config.json"),
+        ),
+        size_mb=120.0,
+        ram_mb=12000.0,
+        rtf_class=0.50,
+        streaming=False,
+        profiles=("high-accuracy", "all"),
+        description="PEFT LoRA Persian document OCR (Qwen2.5-VL-7B backend, build_no_anchoring_v4_yaml_prompt)",
+        engine_name="olmocr_farsi",
+    )
+)
+
 
 # ==============================================================================
-# Helper Functions
+# Helper Functions & Aliases
 # ==============================================================================
+
+ALIASES: dict[str, str] = {
+    # TTS aliases
+    "pocket": "pocket-tts-farsi",
+    "pocket-v2": "pocket-tts-farsi-v2",
+    "pocket-v1": "pocket-tts-farsi",
+    "chatterbox": "chatterbox-tts-persian-gguf",
+    "chatterbox-gguf": "chatterbox-tts-persian-gguf",
+    "chatterbox-torch": "chatterbox-tts-persian-torch",
+    "mana": "piper-mana-lca",
+    "piper": "piper-voices-fa",
+    "ava": "ava-82m",
+    "matcha": "matcha-khadijah-fa-en",
+    "matcha-khadijah": "matcha-khadijah-fa-en",
+    "matcha-musa": "matcha-musa-fa-en",
+    # STT aliases
+    "parakeet": "parakeet-ctc-109m-farsi",
+    "parakeet-ctc": "parakeet-ctc-109m-farsi",
+    "fastconformer": "fastconformer-hybrid-large",
+    "fastconformer-large": "fastconformer-hybrid-large",
+    "shenava": "shenava-koochik-ctc",
+    "nemotron": "nemotron-asr-streaming-farsi",
+    "nemotron-podcast": "nemotron-streaming-podcast",
+    "whisper": "whisper-turbo-persian-sherpa",
+    "whisper-cv17": "whisper-large-v3-farsi-cv17",
+    "faster-whisper": "whisper-large-v3",
+    # NLP / OCR
+    "sentiment": "snappfood-sentiment-analysis",
+    "snappfood": "snappfood-sentiment-analysis",
+    "ocr": "olmocr-farsi-lora",
+    "olmocr": "olmocr-farsi-lora",
+    # Preprocessor
+    "albert": "persian-ezafe-albert",
+}
 
 
 def get_model(model_id: str) -> ModelInfo:
-    """Retrieve model info by ID or raise KeyError."""
-    if model_id not in MODELS:
-        # Check aliases
-        aliases = {
-            "pocket": "pocket-tts-farsi",
-            "mana": "piper-mana-lca",
-            "piper": "piper-voices-fa",
-            "shenava": "shenava-koochik-ctc",
-            "whisper": "whisper-turbo-persian-sherpa",
-            "faster-whisper": "whisper-large-v3",
-            "albert": "persian-ezafe-albert",
-            "ava": "ava-82m",
-        }
-        if model_id in aliases and aliases[model_id] in MODELS:
-            return MODELS[aliases[model_id]]
-        raise KeyError(f"Unknown model ID: {model_id}. Available: {list(MODELS.keys())}")
-    return MODELS[model_id]
+    """Retrieve model info by ID or alias, or raise KeyError."""
+    if model_id in MODELS:
+        return MODELS[model_id]
+    if model_id in ALIASES and ALIASES[model_id] in MODELS:
+        return MODELS[ALIASES[model_id]]
+    # Check lowercase / normalized
+    norm = model_id.lower().strip()
+    if norm in MODELS:
+        return MODELS[norm]
+    if norm in ALIASES and ALIASES[norm] in MODELS:
+        return MODELS[ALIASES[norm]]
+    raise KeyError(f"Unknown model ID: {model_id}. Available: {list(MODELS.keys())}")
 
 
 def list_models(models_dir: Path | str | None = None, model_type: ModelType | None = None) -> list[dict[str, Any]]:
@@ -676,4 +931,3 @@ def get_profile_models(profile: ProfileName) -> list[ModelInfo]:
 def resolve_model_path(model_id: str, models_dir: Path | str | None = None) -> Path:
     """Return local path to a model directory."""
     return get_model(model_id).get_local_path(models_dir)
-

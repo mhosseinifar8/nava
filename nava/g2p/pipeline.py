@@ -1,9 +1,10 @@
 """Unified Persian G2P Pre-TTS Pipeline.
 
 Chains:
-  Step 1: Text & Number Normalization (dates, times, currencies, digits -> words)
+  Step 1: Text & Number Normalization (dates, times, currencies, digits -> words, ZWNJ repairs)
   Step 2: User Custom Dictionary & Pronunciation Overrides
   Step 3: Neural / Context-Aware Ezafe & Homograph Disambiguation
+  Step 4: Target-Engine Specific Token/Punctuation Cleaning (e.g. Matcha, Pocket, Piper)
 """
 from __future__ import annotations
 
@@ -12,7 +13,7 @@ from typing import Literal
 
 from .ezafe import PersianEzafeProcessor
 from .lexicon import CustomDictionaryManager, apply_custom_dictionary
-from .normalizer import normalize_persian_text
+from .normalizer import clean_text_for_matcha, normalize_persian_text
 
 G2PMode = Literal["lca_albert", "homo_ge2pe", "fast_espeak"]
 
@@ -36,22 +37,27 @@ class PersianG2PPipeline:
         custom_dictionary: dict[str, str] | None = None,
         g2p_mode: G2PMode = "lca_albert",
         enable_ezafe: bool = True,
+        target_engine: str = "generic",
     ) -> str:
-        """Run the complete 3-step Persian text preprocessing pipeline."""
+        """Run the complete Persian text preprocessing pipeline."""
         if not text or not text.strip():
             return ""
 
-        # Step 1: Text & Number Normalization (convert numbers, dates, times to words)
-        normalized = normalize_persian_text(text, expand_numbers=True)
+        # Step 1: Text & Number Normalization (convert numbers, dates, times to words, fix compounds)
+        normalized = normalize_persian_text(text, expand_numbers=True, repair_compounds=True)
 
         # Step 2: User Custom Dictionary & Pronunciation Mapping
         with_custom = self.dict_manager.apply(normalized, custom_dictionary)
 
         # Step 3: Neural / Context-Aware Ezafe & Homograph Disambiguation
-        if enable_ezafe:
+        if enable_ezafe and target_engine != "matcha":
             result = self.ezafe_processor.process_sentence(with_custom)
         else:
             result = with_custom
+
+        # Step 4: Engine-specific tokenization and punctuation safety
+        if target_engine in ("matcha", "matcha-tts", "sherpa_onnx"):
+            result = clean_text_for_matcha(result)
 
         return result
 
@@ -64,6 +70,7 @@ def preprocess_tts_text(
     custom_dictionary: dict[str, str] | None = None,
     g2p_mode: G2PMode = "lca_albert",
     enable_ezafe: bool = True,
+    target_engine: str = "generic",
 ) -> str:
     """Preprocess raw input text for any Persian TTS engine."""
     return _GLOBAL_PIPELINE.process(
@@ -71,5 +78,5 @@ def preprocess_tts_text(
         custom_dictionary=custom_dictionary,
         g2p_mode=g2p_mode,
         enable_ezafe=enable_ezafe,
+        target_engine=target_engine,
     )
-

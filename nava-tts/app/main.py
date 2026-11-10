@@ -464,6 +464,12 @@ async def websocket_tts(ws: WebSocket):
             if not isinstance(msg, dict):
                 continue
 
+            msg_type = msg.get("type")
+            action = msg.get("action")
+            if msg_type == "ping" or action == "ping":
+                await ws.send_json({"type": "pong", "status": "ok"})
+                continue
+
             # Update configuration if fields are provided
             for k in ("model", "engine", "voice", "voice_prompt", "speed", "g2p_mode", "custom_dictionary"):
                 if k in msg and msg[k] is not None:

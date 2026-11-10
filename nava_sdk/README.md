@@ -7,10 +7,11 @@
   <a href="https://hub.docker.com/r/mhosseinifar8/nava-tts"><img src="https://img.shields.io/badge/docker-mhosseinifar8%2Fnava--tts-2496ED?logo=docker&logoColor=white" alt="Docker TTS"></a>
   <a href="https://hub.docker.com/r/mhosseinifar8/nava"><img src="https://img.shields.io/badge/docker-mhosseinifar8%2Fnava-2496ED?logo=docker&logoColor=white" alt="Docker Server"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="#sub-200ms-real-time-streaming"><img src="https://img.shields.io/badge/Streaming-%3C%20200ms%20TTFB-brightgreen.svg" alt="< 200ms TTFB"></a>
   <a href="#features"><img src="https://img.shields.io/badge/Inference-CPU%20Optimized-green.svg" alt="CPU Optimized"></a>
 </p>
 
-The official Python SDK and client library for **Nava (نوا)** — an offline, CPU-optimized Persian speech platform supporting production-grade Multi-Engine Speech-to-Text (STT), Text-to-Speech (TTS), Context-Aware Ezafe/G2P processing, Inverse Text Normalization (ITN), and Zero-Shot Voice Cloning.
+The official Python client SDK for **Nava (نوا)** — a production-grade, CPU-optimized Persian speech platform supporting high-throughput **Speech-to-Text (STT)**, **Text-to-Speech (TTS)**, **Context-Aware G2P / Neural Ezafe detection**, **Inverse Text Normalization (ITN)**, **Zero-Shot Voice Cloning**, **Sentiment Analysis**, and **Document OCR** over REST and low-latency WebSockets.
 
 ---
 
@@ -18,85 +19,65 @@ The official Python SDK and client library for **Nava (نوا)** — an offline,
 
 - [Features](#features)
 - [Installation](#installation)
-- [Docker Hub Official Images](#docker-hub-official-images)
 - [Quick Start](#quick-start)
-- [Python SDK Manual](#python-sdk-manual)
+- [Python SDK Reference](#python-sdk-reference)
   - [Synchronous Client (`NavaClient`)](#synchronous-client-navaclient)
-  - [Asynchronous Client (`AsyncNavaClient`)](#asynchronous-client-asyncnavaclient)
-- [WebSocket Streaming Manual](#websocket-streaming-manual)
-  - [Real-Time STT WebSocket (`/v1/ws/stt` and `/ws/stt`)](#real-time-stt-websocket-v1wsstt-and-wsstt)
-  - [Sentence-Streaming TTS WebSocket (`/v1/ws/tts` and `/ws/tts`)](#sentence-streaming-tts-websocket-v1wstts-and-wstts)
-  - [JavaScript / Frontend WebSocket Example](#javascript--frontend-websocket-example)
-- [REST API Reference & cURL Manual](#rest-api-reference--curl-manual)
-  - [`POST /v1/audio/transcriptions` (STT)](#post-v1audiotranscriptions-stt)
-  - [`POST /v1/audio/speech` (TTS)](#post-v1audiospeech-tts)
-  - [`POST /v1/voices/clone` (Voice Cloning)](#post-v1voicesclone-voice-cloning)
-  - [`GET /v1/models` & `POST /v1/models/download`](#get-v1models--post-v1modelsdownload)
-- [Persian Speech Features](#persian-speech-features)
-  - [Inverse Text Normalization (ITN)](#inverse-text-normalization-itn)
-  - [Pre-TTS G2P & Ezafe Detection](#pre-tts-g2p--ezafe-detection)
-  - [Custom Dictionaries & Hotwords](#custom-dictionaries--hotwords)
+  - [Asynchronous Streaming Client (`AsyncNavaClient`)](#asynchronous-streaming-client-asyncnavaclient)
+  - [Persian Sentiment Analysis](#persian-sentiment-analysis)
+  - [Persian Document OCR](#persian-document-ocr)
+  - [Zero-Shot Voice Cloning](#zero-shot-voice-cloning)
+- [WebSocket Streaming Protocol](#websocket-streaming-protocol)
+  - [Persistent Connection Keep-Alive & Ping/Pong](#persistent-connection-keep-alive--pingpong)
+  - [Streaming STT (`/ws/stt` and `/v1/ws/stt`)](#streaming-stt-wsstt-and-v1wsstt)
+  - [Streaming TTS (`/ws/tts` and `/v1/ws/tts`)](#streaming-tts-wstts-and-v1wstts)
+  - [Frontend / JavaScript Example](#frontend--javascript-example)
+- [cURL & REST API Quick Reference](#curl--rest-api-quick-reference)
 - [Error Handling](#error-handling)
-- [Testing & Service Verification](#testing--service-verification)
+- [Docker Hub Official Backend Images](#docker-hub-official-backend-images)
 - [License](#license)
 
 ---
 
 ## Features
 
-- **Multi-Engine Persian STT on CPU:**
-  - FastConformer Shenava Family (`shenava-koochik-ctc` with 8.12% WER, `shenava-koochik-v1.5-rnnt` Transducer, `shenava-115m-flagship`).
-  - Real-Time Streaming ASR (`shenava-rizeh-streaming-32m` with RTF ~ 0.027 and `shenava-rizeh-pizeh-6.9m` edge model).
-  - Streaming Nemotron (`nemotron-streaming-farsi` with 1120ms chunking).
-  - Whisper Turbo Persian (`whisper-turbo-persian-sherpa` hybrid INT8+FP32 with automatic 1.0s silence padding and 2s sliding window overlap).
-  - Lightweight Vosk (`vosk-fa-light`).
-- **Multi-Engine Persian TTS on CPU:**
-  - `piper-mana-lca`: Highest MOS 3.14 studio-quality speech with Albert Ezafe.
-  - Multi-speaker voices (`amir`, `gyro`, `ganji`, `ganji_adabi`, `reza_ibrahim`, `haaniye_low`).
-  - `ava-82m`: 24kHz Kokoro-82M Persian architecture with warm singleton memory caching.
-  - `matcha-khadijah-fa-en` & `matcha-musa-fa-en`: Bilingual Persian-English flow matching with HiFi-GAN vocoder.
-  - `pocket-tts-farsi` & `nava-fa-clone`: 10 built-in characters + **Zero-Shot Voice Cloning on CPU** from 5–30s reference audio.
-- **Persian Text Processing:**
-  - Context-Aware Ezafe detector (`persian-ezafe-albert` ONNX, <40ms CPU latency).
-  - Spoken number conversion with Persian ITN (`"هشتصد و پنجاه"` $\rightarrow$ `"850"` or `"۸۵۰"`).
-  - Text & Number normalization (dates, times, currencies, percentages).
-- **Protocols & Compatibility:**
-  - REST (OpenAI-compatible) and WebSockets (real-time chunk and sentence streaming).
-  - Flexible routing supporting `/v1/audio/...`, `/api/v1/...`, `/v1/v1/...`, and WebSocket control handshakes.
+- **Persian Speech-to-Text (STT):**
+  - Ultra-fast <150ms CTC transcription with `parakeet-ctc-109m-farsi`.
+  - Production FastConformer (`shenava-koochik-ctc`, `fastconformer-hybrid-large`).
+  - Zero-latency chunk streaming (`shenava-rizeh-streaming-32m`, `nemotron-asr-streaming-farsi`).
+  - High-accuracy Whisper Large-v3 CV17 INT8 with Silero VAD (`whisper-large-v3-farsi-cv17`).
+  - Contextual hotword boosting and custom dictionary overrides.
+  - Spoken Persian Inverse Text Normalization (`"هشتصد و پنجاه"` $\rightarrow$ `"850"`).
+- **Persian Text-to-Speech (TTS):**
+  - Studio MOS 3.14 voice quality with `piper-mana-lca`.
+  - Flow-matching bilingual Persian-English synthesis with `matcha-khadijah-fa-en` & `matcha-musa-fa-en`.
+  - 24kHz FlowLM zero-shot voice cloning with `pocket-tts-farsi-v2`.
+  - High-performance GGUF llama-cpp inference with `chatterbox-tts-persian-gguf`.
+  - Automatic neural ezafe connector insertion (`persian-ezafe-albert` ONNX <40ms).
+  - Fast-path clause streaming delivering **< 200ms Time-To-First-Byte (TTFB)**.
+- **Multimodal AI Extensions:**
+  - Real-time Persian sentiment analysis (< 15ms latency on CPU).
+  - Persian document OCR via fine-tuned `olmocr-farsi-lora` (Qwen2.5-VL-7B backend).
+- **Network & Enterprise Robustness:**
+  - Persistent WebSocket heartbeat keepalive (`ping` / `pong`) frames.
+  - Full route compatibility: `/v1/...`, `/api/v1/...`, and double-prefix `/v1/v1/...`.
 
 ---
 
 ## Installation
+
+Install the official package from PyPI:
 
 ```bash
 pip install nava-fa-speech
 ```
 
 Or install directly from GitHub:
+
 ```bash
 pip install git+https://github.com/mhosseinifar8/nava.git#subdirectory=nava_sdk
 ```
 
-*Note: Both `import nava` and `import nava_fa_speech` work interchangeably.*
-
----
-
-## Docker Hub Official Images
-
-If you need to deploy the server backend, prebuilt images are available on Docker Hub:
-
-| Service | Docker Image | Port | Description |
-|---|---|---|---|
-| **STT Microservice** | [`mhosseinifar8/nava-stt:latest`](https://hub.docker.com/r/mhosseinifar8/nava-stt) | `8001` | FastConformer Shenava, Whisper-Turbo, Nemotron |
-| **TTS Microservice** | [`mhosseinifar8/nava-tts:latest`](https://hub.docker.com/r/mhosseinifar8/nava-tts) | `8002` | Piper Mana, Matcha-TTS, Ava-82M, Pocket-TTS & Voice Cloning |
-| **Unified Platform** | [`mhosseinifar8/nava:latest`](https://hub.docker.com/r/mhosseinifar8/nava) | `8000` | Complete platform with all STT and TTS engines |
-
-```bash
-# Pull images
-docker pull mhosseinifar8/nava-stt:latest
-docker pull mhosseinifar8/nava-tts:latest
-docker pull mhosseinifar8/nava:latest
-```
+*(Both `import nava` and `import nava_fa_speech` work interchangeably).*
 
 ---
 
@@ -105,138 +86,65 @@ docker pull mhosseinifar8/nava:latest
 ```python
 from nava import NavaClient
 
-# Connect to Nava services:
-# Option A (Microservices): STT on 8001, TTS on 8002
+# Connect to unified Nava server (or microservices on ports 8001 / 8002)
 with NavaClient(stt_url="http://127.0.0.1:8001", tts_url="http://127.0.0.1:8002") as nava:
-# Option B (Unified Platform): Both on port 8000
-# with NavaClient(stt_url="http://127.0.0.1:8000", tts_url="http://127.0.0.1:8000") as nava:
-
     # 1. Transcribe Persian speech audio
-    with open("input.pcm", "rb") as f:
-        pcm_bytes = f.read()
+    with open("sample.pcm", "rb") as f:
+        res = nava.transcribe(f.read(), model="parakeet-ctc-109m-farsi", enable_itn=True)
+    print("Transcript:", res.itn_text or res.text)
 
-    transcript = nava.transcribe(
-        pcm_bytes,
-        model="shenava-koochik-ctc",
-        enable_itn=True,                    # Converts "هشتصد و پنجاه" -> "850"
-        hotwords={"اسنپ‌فود": 2.0},
-        custom_dictionary={"اسنب فود": "اسنپ‌فود"},
-    )
-    print("Transcript:", transcript.text)
-    print("With ITN:", transcript.itn_text)
-
-    # 2. Synthesize Persian speech with Ezafe
-    speech = nava.synthesize(
-        "سلام، به سامانه پیشرفته نوا خوش آمدید.",
-        model="piper-mana-lca",
-        speed=1.0,
-        g2p_mode="lca_albert",
-    )
+    # 2. Synthesize speech with Neural Ezafe
+    speech = nava.synthesize("سلام، سامانه هوشمند نوا آماده به کار است.", model="piper-mana-lca")
     with open("output.pcm", "wb") as f:
         f.write(speech.pcm)
-    print(f"Generated {len(speech.pcm)} bytes at {speech.sample_rate} Hz via {speech.engine}")
 ```
 
 ---
 
-## Python SDK Manual
-
-Both `import nava` and `import nava_fa_speech` are fully supported.
+## Python SDK Reference
 
 ### Synchronous Client (`NavaClient`)
 
-```python
-from nava import NavaClient, TranscriptionResult, SpeechResult
+#### 1. Speech-to-Text (`transcribe`)
 
-# Microservice deployment (default ports):
-client = NavaClient(
-    stt_url="http://127.0.0.1:8001",
-    tts_url="http://127.0.0.1:8002",
-    timeout=120.0,
+```python
+from nava import NavaClient
+
+with NavaClient(stt_url="http://127.0.0.1:8001", tts_url="http://127.0.0.1:8002") as nava:
+    with open("input.pcm", "rb") as f:
+        pcm_bytes = f.read()
+
+    result = nava.transcribe(
+        pcm_bytes,
+        model="parakeet-ctc-109m-farsi",    # Ultra-fast STT (< 150ms)
+        enable_itn=True,                   # Turns spoken numbers into digits
+        hotwords={"دیجیکالا": 2.5, "اسنپ": 2.0},
+        custom_dictionary={"اسنب فود": "اسنپ‌فود"},
+    )
+
+    print("Raw Text:", result.text)
+    print("ITN Normalized:", result.itn_text)
+    print("RTF:", result.rtf)
+```
+
+#### 2. Text-to-Speech (`synthesize`)
+
+```python
+speech = nava.synthesize(
+    "کتابِ خوب و خانهٔ بزرگ در تاریخ 1403/08/18 افتتاح شد.",
+    model="piper-mana-lca",                # Or: "matcha-khadijah-fa-en", "pocket-tts-farsi-v2"
+    speed=1.0,
+    g2p_mode="lca_albert",                 # Context-aware neural ezafe
+    response_format="pcm",                 # Or: "wav"
 )
 
-# Unified server deployment (single port 8000):
-# client = NavaClient(stt_url="http://127.0.0.1:8000", tts_url="http://127.0.0.1:8000")
+with open("speech.pcm", "wb") as f:
+    f.write(speech.pcm)
 ```
 
-#### 1. `client.transcribe(...)`
-Transcribes raw signed 16-bit little-endian PCM audio (16kHz mono) or WAV bytes.
+### Asynchronous Streaming Client (`AsyncNavaClient`)
 
-```python
-result: TranscriptionResult = client.transcribe(
-    pcm=audio_bytes,
-    model="shenava-koochik-ctc",        # Available: shenava-koochik-ctc, shenava-koochik-v1.5-rnnt,
-                                        #            whisper-turbo-persian-sherpa, vosk-fa-light, etc.
-    enable_itn=True,                    # Convert spoken numbers to digits (True by default)
-    hotwords={"دیجیکالا": 2.5},          # Boost domain keywords (transducer / whisper)
-    custom_dictionary={"اسنب": "اسنپ"},  # Correct domain vocabulary
-    initial_prompt=None,                # Context prompt for Whisper models
-)
-
-print(result.text)          # Raw transcribed text
-print(result.itn_text)      # Numbers normalized to digits
-print(result.segments)      # [{"start": 0.0, "end": 2.4, "text": "..."}]
-print(result.language_prob) # 0.99
-print(result.rtf)           # Real-Time Factor (e.g. 0.045)
-```
-
-#### 2. `client.synthesize(...)`
-Synthesizes Persian text into raw 16-bit PCM or WAV audio.
-
-```python
-speech: SpeechResult = client.synthesize(
-    text="کتاب خوب و خانه بزرگ در تاریخ 1403/08/18 ثبت شد.",
-    model="piper-mana-lca",             # piper-mana-lca, ava-82m, matcha-musa-fa-en, matcha-khadijah-fa-en, pocket-tts-farsi
-    voice="default",                    # Speaker name: mana, amir, gyro, ganji, ava, or a cloned voice_id
-    speed=1.0,                          # 0.5 to 2.0
-    g2p_mode="lca_albert",              # "lca_albert" | "homo_ge2pe" | "fast_espeak"
-    custom_dictionary={"مرد": "مَرد"},  # Custom pronunciation / eraab dictionary
-    reference_audio=None,               # Optional 5–30s reference WAV bytes for one-shot voice cloning
-    response_format="pcm",              # "pcm" or "wav"
-)
-
-# Access result fields
-raw_bytes = speech.pcm
-rate = speech.sample_rate    # 22050 or 24000
-engine = speech.engine       # e.g. "piper", "matcha", "ava"
-voice = speech.voice         # e.g. "mana"
-```
-
-#### 3. `client.clone_voice(...)`
-Uploads reference audio (5–30 seconds) and registers a reusable `voice_id` for CPU voice cloning.
-
-```python
-with open("my_voice_sample.wav", "rb") as f:
-    ref_audio = f.read()
-
-voice_id = client.clone_voice(ref_audio, name="my_speaker")
-print("Registered voice:", voice_id)  # e.g. "voice_my_speaker"
-
-# Use in subsequent synthesis calls
-cloned = client.synthesize(
-    "سلام، این متن با صدای من خوانده می‌شود.",
-    model="pocket-tts-farsi",
-    voice=voice_id,
-)
-```
-
-#### 4. `client.list_models()` & `client.download_model(...)`
-```python
-# List models and check installation status
-models = client.list_models()
-for m in models:
-    print(f"{m['id']:<32} Installed: {m['installed']} Size: {m['size_mb']}MB")
-
-# Trigger download of a specific model or profile
-client.download_model(model_id="shenava-koochik-ctc")
-client.download_model(profile="minimal")
-```
-
----
-
-### Asynchronous Client (`AsyncNavaClient`)
-
-`AsyncNavaClient` provides async coroutines for REST plus real-time bidirectional WebSocket streaming.
+`AsyncNavaClient` is engineered for async frameworks (FastAPI, aiohttp, Starlette) and WebSocket sentence streaming:
 
 ```python
 import asyncio
@@ -247,319 +155,224 @@ async def main():
         stt_url="http://127.0.0.1:8001",
         tts_url="http://127.0.0.1:8002",
     ) as nava:
-        # Async REST transcription
-        res = await nava.transcribe(pcm_bytes, model="shenava-koochik-ctc")
-        print("Text:", res.text)
+        # A. Sentence-by-sentence streaming TTS (< 200ms TTFB)
+        text = "سلام، من چشم هستم. روبه‌روی شما مسیرِ باز است و یک صندلی سمت راست قرار دارد."
+        async for chunk in nava.stream_speech_ws(text, model="matcha-khadijah-fa-en"):
+            print(f"Streaming frame: {len(chunk.pcm)} bytes @ {chunk.sample_rate}Hz")
 
-        # Async REST synthesis
-        speech = await nava.synthesize("سلام", model="piper-mana-lca")
-
-        # Real-time WebSocket STT
-        ws_res = await nava.transcribe_ws(pcm_bytes, model="shenava-rizeh-streaming-32m")
-        print("WS result:", ws_res.text)
-
-        # Sentence-by-sentence streaming TTS over WebSocket
-        async for chunk in nava.stream_speech_ws(
-            "جمله اول به سرعت تولید می‌شود. سپس جمله دوم در ادامه می‌آید.",
-            model="piper-mana-lca",
-        ):
-            print(f"Received chunk: {len(chunk.pcm)} bytes at {chunk.sample_rate} Hz")
+        # B. Real-time streaming STT over WebSocket
+        with open("stream.pcm", "rb") as f:
+            result = await nava.transcribe_ws(f.read(), model="parakeet-ctc-109m-farsi")
+            print("WS Transcript:", result.itn_text or result.text)
 
 asyncio.run(main())
 ```
 
+### Persian Sentiment Analysis
+
+Analyze Persian customer reviews, feedback, and transcripts with sub-15ms latency:
+
+```python
+sentiment = nava.analyze_sentiment("کیفیت غذا واقعا بی‌نظیر بود و سفارش کمتر از بیست دقیقه تحویل داده شد.")
+print("Label:", sentiment["label"])        # e.g., "HAPPY"
+print("Score:", sentiment["score"])        # e.g., 0.88
+print("Latency:", sentiment["latency_ms"])  # e.g., 1.37 ms
+```
+
+### Persian Document OCR
+
+Extract structured text from Persian scanned invoices, forms, and documents via `olmocr-farsi-lora`:
+
+```python
+with open("invoice.png", "rb") as f:
+    image_bytes = f.read()
+
+ocr_result = nava.ocr_document(image_bytes, prompt="استخراج اقلام فاکتور")
+print("OCR Extracted Text:\n", ocr_result["text"])
+```
+
+### Zero-Shot Voice Cloning
+
+Upload a short 5–30s reference WAV audio of any Persian speaker and synthesize new text with their voice:
+
+```python
+# 1. Upload sample voice to obtain voice_id
+with open("reference_voice.wav", "rb") as f:
+    voice_id = nava.clone_voice(f.read(), name="teacher_voice")
+
+# 2. Synthesize using cloned identity
+speech = nava.synthesize(
+    "سلام به دانش‌آموزان عزیز، درس امروز را آغاز می‌کنیم.",
+    model="pocket-tts-farsi-v2",
+    voice=voice_id,
+)
+```
+
 ---
 
-## WebSocket Streaming Manual
+## WebSocket Streaming Protocol
 
-### Real-Time STT WebSocket (`/v1/ws/stt` and `/ws/stt`)
+### Persistent Connection Keep-Alive & Ping/Pong
 
-Low-latency real-time Persian speech recognition with live partials and endpoint detection.
+Both `/ws/tts` and `/ws/stt` handle bidirectional ping/pong keepalive frames to eliminate unexpected disconnections during network pauses or heavy CPU load:
 
-#### Flow Protocol:
-1. **Connect:** Open WebSocket to `ws://<host>:<port>/v1/ws/stt` (or `/ws/stt`)
-2. **Handshake (JSON):** Send configuration object:
+- **Client Ping Frame:**
+  ```json
+  {"type": "ping"}
+  ```
+- **Server Pong Frame:**
+  ```json
+  {"type": "pong", "status": "alive"}
+  ```
+
+### Streaming STT (`/ws/stt` and `/v1/ws/stt`)
+
+1. **Send Handshake:**
    ```json
    {
-     "model": "shenava-rizeh-streaming-32m",
+     "model": "parakeet-ctc-109m-farsi",
      "sample_rate": 16000,
      "latency_ms": 80,
      "enable_itn": true,
-     "hotwords": {"چشم": 2.5}
+     "hotwords": {"اسنپ": 2.0}
    }
    ```
-   *Server responds:* `{"status": "configured", "model": "shenava-rizeh-streaming-32m"}`
-3. **Stream Audio (Binary):** Send raw signed 16-bit little-endian PCM chunks (e.g. 100ms – 250ms chunks = 3200 – 8000 bytes at 16kHz mono).
-4. **Receive Partials (JSON):**
+2. **Stream Binary Audio:** Send 100ms–200ms signed 16-bit 16kHz mono PCM frames.
+3. **Receive Partials:**
    ```json
-   {"type": "partial", "text": "سلام به"}
-   {"type": "partial", "text": "سلام به سامانه نوا"}
+   {"type": "partial", "text": "سلام من"}
    ```
-5. **Finish Stream (JSON):** Send EOF:
+4. **Send EOS:**
    ```json
    {"action": "eos"}
    ```
-6. **Receive Final Result (JSON):**
+5. **Receive Final Output:**
    ```json
    {
      "type": "final",
-     "status": "success",
-     "text": "سلام به سامانه نوا هشتصد و پنجاه",
-     "itn_text": "سلام به سامانه نوا 850",
-     "rtf": 0.027,
-     "segments": [{"start": 0.0, "end": 2.15, "text": "سلام به سامانه نوا 850"}]
+     "text": "سلام من چشم هستم",
+     "itn_text": "سلام من چشم هستم",
+     "rtf": 0.015
    }
    ```
 
----
+### Streaming TTS (`/ws/tts` and `/v1/ws/tts`)
 
-### Sentence-Streaming TTS WebSocket (`/v1/ws/tts` and `/ws/tts`)
-
-Pipelined text-to-speech where sentence $N+1$ G2P runs while sentence $N$ audio is synthesized and streamed, achieving **<100ms Time-To-First-Audio (TTFA)** on CPU.
-
-#### Supported Handshake & Config Frames:
-Nava supports both initial configuration frames (without `text`) and direct text frames:
-
-**Option 1: Initial Config Frame (e.g. from client libraries):**
-```json
-{
-  "model": "matcha-musa-fa-en",
-  "voice": "default",
-  "speed": 1.0,
-  "g2p_mode": "lca_albert"
-}
-```
-*Server responds:* `{"status": "ok", "action": "configured", "model": "matcha-musa-fa-en"}`
-
-**Option 2: Text Frame with configuration:**
-```json
-{
-  "type": "text",
-  "text": "این جمله اول است که بلافاصله پخش می‌شود. این هم جمله دوم است.",
-  "model": "piper-mana-lca",
-  "voice": "mana",
-  "speed": 1.0,
-  "g2p_mode": "lca_albert"
-}
-```
-
-#### Stream Sequence:
-1. **Receive Metadata (JSON):**
+1. **Send Text Request:**
    ```json
    {
-     "status": "streaming",
-     "type": "streaming",
-     "engine": "piper",
-     "sample_rate": 22050
+     "type": "text",
+     "text": "سلام، من چشم هستم. روبه‌روی شما مسیر باز است.",
+     "model": "piper-mana-lca",
+     "voice": "mana",
+     "speed": 1.0
    }
    ```
-2. **Receive Audio (Binary):** Raw 16-bit PCM binary frames for each sentence as it finishes.
-3. **Cancellation (Optional JSON):** Send `{"type": "cancel"}` at any time to immediately abort remaining sentences.
-4. **Receive Completion (JSON):**
+2. **Receive Stream Header:**
    ```json
-   {"status": "completed", "type": "done"}
+   {"status": "streaming", "sample_rate": 22050, "engine": "piper"}
+   ```
+3. **Receive Binary PCM Chunks:** Fast-path clause frames arrive in real-time (< 200ms TTFB).
+4. **Completion:**
+   ```json
+   {"status": "completed"}
    ```
 
----
-
-### JavaScript / Frontend WebSocket Example
+### Frontend / JavaScript Example
 
 ```javascript
-// Browser / Node.js Streaming STT Client
-const ws = new WebSocket("ws://127.0.0.1:8001/ws/stt");
+const ws = new WebSocket("ws://127.0.0.1:8002/v1/ws/tts");
+ws.binaryType = "arraybuffer";
 
 ws.onopen = () => {
-  // 1. Send handshake
+  // Start keepalive heartbeat
+  setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "ping" }));
+    }
+  }, 10000);
+
+  // Send speech synthesis request
   ws.send(JSON.stringify({
-    model: "shenava-rizeh-streaming-32m",
-    sample_rate: 16000,
-    enable_itn: true
+    type: "text",
+    text: "سلام به سامانه نوا خوش آمدید.",
+    model: "piper-mana-lca",
   }));
 };
 
 ws.onmessage = (event) => {
   if (typeof event.data === "string") {
-    const msg = JSON.parse(event.data);
-    if (msg.type === "partial") {
-      console.log("Live:", msg.text);
-    } else if (msg.type === "final") {
-      console.log("Final Transcript:", msg.itn_text || msg.text);
-    }
+    const meta = JSON.parse(event.data);
+    if (meta.type === "pong") return;
+    console.log("Metadata:", meta);
+  } else {
+    // Binary audio PCM received
+    console.log("Received PCM chunk:", event.data.byteLength, "bytes");
   }
 };
-
-// Stream microphone PCM data:
-function sendAudioChunk(pcmInt16Array) {
-  if (ws.readyState === WebSocket.OPEN) {
-    ws.send(pcmInt16Array.buffer);
-  }
-}
-
-// When user stops speaking:
-function stopRecording() {
-  ws.send(JSON.stringify({ action: "eos" }));
-}
 ```
 
 ---
 
-## REST API Reference & cURL Manual
+## cURL & REST API Quick Reference
 
-Nava exposes OpenAI-compatible REST endpoints with Persian extensions.
-
-### `POST /v1/audio/transcriptions` (STT)
-*(Aliases: `/api/v1/transcriptions`, `/v1/v1/audio/transcriptions`)*
-
-#### Option A: Multipart Form Data
+### 1. Transcribe Audio (STT)
 ```bash
-curl -X POST "http://127.0.0.1:8001/v1/audio/transcriptions" \
-  -F "file=@audio.wav" \
-  -F "model=shenava-koochik-ctc" \
-  -F "enable_itn=true" \
-  -F 'hotwords={"اسنپفود": 2.0}' \
-  -F 'custom_dictionary={"اسنب": "اسنپ"}'
-```
-
-#### Option B: Raw 16-bit PCM Octet-Stream
-```bash
-curl -X POST "http://127.0.0.1:8001/v1/audio/transcriptions?model=shenava-koochik-ctc&enable_itn=true" \
+curl -X POST "http://127.0.0.1:8001/v1/audio/transcriptions?model=parakeet-ctc-109m-farsi&enable_itn=true" \
   -H "Content-Type: application/octet-stream" \
-  --data-binary "@audio.pcm"
+  --data-binary @speech.pcm
 ```
 
-**Response (JSON):**
-```json
-{
-  "text": "قیمت آن هشتصد و پنجاه تومان است",
-  "itn_text": "قیمت آن 850 تومان است",
-  "segments": [
-    {"start": 0.0, "end": 2.4, "text": "قیمت آن 850 تومان است"}
-  ],
-  "language_prob": 0.99,
-  "rtf": 0.038,
-  "model": "shenava-koochik-ctc"
-}
-```
-
----
-
-### `POST /v1/audio/speech` (TTS)
-*(Aliases: `/api/v1/speech`, `/v1/v1/audio/speech`)*
-
+### 2. Synthesize Speech (TTS)
 ```bash
 curl -X POST "http://127.0.0.1:8002/v1/audio/speech" \
   -H "Content-Type: application/json" \
-  -d '{
-    "input": "سلام به پروژه نوا، کیفیت استودیویی روی پردازنده معمولی.",
-    "model": "matcha-musa-fa-en",
-    "voice": "default",
-    "speed": 1.0,
-    "g2p_mode": "lca_albert",
-    "response_format": "wav"
-  }' \
+  -d '{"input": "سلام نوا", "model": "piper-mana-lca", "response_format": "wav"}' \
   --output speech.wav
 ```
 
-**Request Parameters:**
-- `input` *(string, required)*: Persian text to synthesize (alias: `text`).
-- `model` *(string)*: `piper-mana-lca` (default), `matcha-musa-fa-en`, `matcha-khadijah-fa-en`, `ava-82m`, `pocket-tts-farsi`, `piper-voices-fa`.
-- `voice` *(string)*: Speaker name (`mana`, `amir`, `gyro`, `ganji`, `ava`) or a cloned `voice_id`.
-- `speed` *(float)*: Speed factor from `0.5` to `2.0` (default: `1.0`).
-- `g2p_mode` *(string)*: `"lca_albert"` (default), `"homo_ge2pe"`, or `"fast_espeak"`.
-- `custom_dictionary` *(object)*: Map of custom words to pronunciations or eraab (`{"برند": "بِرَند"}`).
-- `reference_audio_base64` *(string, optional)*: Base64-encoded 5–30s reference WAV for one-shot voice cloning.
-- `response_format` *(string)*: `"pcm"` (default signed 16-bit mono) or `"wav"`.
-
----
-
-### `POST /v1/voices/clone` (Voice Cloning)
-
-Registers reference audio and caches conditioning embeddings on CPU.
-
+### 3. Sentiment Analysis (< 15ms)
 ```bash
-curl -X POST "http://127.0.0.1:8002/v1/voices/clone" \
-  -F "file=@my_reference_sample.wav" \
-  -F "name=speaker_ali"
-```
-
-**Response (JSON):**
-```json
-{
-  "voice_id": "voice_speaker_ali",
-  "status": "ready",
-  "duration_seconds": 6.4,
-  "sample_rate": 24000,
-  "message": "Voice profile registered. Pass voice='voice_speaker_ali' to TTS requests."
-}
-```
-
----
-
-### `GET /v1/models` & `POST /v1/models/download`
-
-```bash
-# List all models
-curl "http://127.0.0.1:8000/v1/models"
-
-# Trigger download of minimal profile in background
-curl -X POST "http://127.0.0.1:8000/v1/models/download" \
+curl -X POST "http://127.0.0.1:8000/v1/nlp/sentiment" \
   -H "Content-Type: application/json" \
-  -d '{"profile": "minimal", "async_mode": true}'
+  -d '{"text": "سفارش خیلی سریع و باکیفیت ارسال شد."}'
 ```
-
----
-
-## Persian Speech Features
-
-### Inverse Text Normalization (ITN)
-Automatically converts spoken Persian numerals into digits in STT outputs:
-- Compound numbers: `"هشتصد و پنجاه و سه"` $\rightarrow$ `"853"`
-- Scales: `"دو میلیون و پانصد هزار ریال"` $\rightarrow$ `"2500000 ریال"`
-- Ordinals: `"طبقه سوم یا چهارم"` $\rightarrow$ `"طبقه 3م یا 4م"`
-- Dates & Years: `"سال هزار و چهارصد و سه"` $\rightarrow$ `"سال 1403"`
-- Decimals & Negatives: `"سه ممیز پنج"` $\rightarrow$ `"3.5"`, `"منفی ده"` $\rightarrow$ `"-10"`
-- Persian digits option (`to_persian_digits=True`): `"هشتصد و پنجاه"` $\rightarrow$ `"۸۵۰"`
-
-### Pre-TTS G2P & Ezafe Detection
-Before synthesis, text runs through a 3-step pipeline:
-1. **Normalization:** Expands digits (`1403/08/18` $\rightarrow$ `هجدهم آبان هزار و چهارصد و سه`), times (`14:30` $\rightarrow$ `چهارده و نیم`), percentages (`۲۵٪` $\rightarrow$ `بیست و پنج درصد`).
-2. **Lexicon Mapping:** Replaces acronyms, colloquialisms, and brand names from `custom_dictionary`.
-3. **Ezafe Detector (`persian-ezafe-albert`):** Detects grammatical noun-adjective connections and appends kasreh (`ِ`) for consonant endings (e.g. `کتاب خوب` $\rightarrow$ `کتابِ خوب`) or `‌ی` for vowel endings (e.g. `خانه بزرگ` $\rightarrow$ `خانه‌ی بزرگ`).
 
 ---
 
 ## Error Handling
 
-All client errors raise `NavaServiceError` with descriptive HTTP status codes and messages:
+All client exceptions raise `NavaServiceError`:
 
 ```python
 from nava import NavaClient, NavaServiceError
 
-with NavaClient() as nava:
-    try:
-        res = nava.transcribe(b"too_short")
-    except NavaServiceError as exc:
-        print("Caught Nava error:", exc)
-        # e.g. "Nava returned HTTP 422: audio is shorter than 100 ms at 16 kHz"
+try:
+    with NavaClient(stt_url="http://127.0.0.1:8001") as nava:
+        result = nava.transcribe(b"invalid_bytes", model="unknown_model")
+except NavaServiceError as exc:
+    print(f"Nava operation failed: {exc}")
 ```
 
 ---
 
-## Testing & Service Verification
+## Docker Hub Official Backend Images
 
-You can verify your live STT & TTS deployment (health, REST synthesis, WebSocket streaming, and transcription) with the included automated testing script:
+Deploy backend services with official CPU-optimized Docker images:
 
 ```bash
-# Test against your server host / IP (default ports 8001 STT & 8002 TTS):
-python3 scripts/test_nava_services.py --host 192.168.14.207
+# Pull and run STT Microservice (Port 8001)
+docker run -d --name nava-stt -p 8001:8001 -v $(pwd)/models:/models mhosseinifar8/nava-stt:latest
 
-# Or test the unified platform (port 8000):
-python3 scripts/test_nava_services.py --host 192.168.14.207 --unified-port 8000
+# Pull and run TTS Microservice (Port 8002)
+docker run -d --name nava-tts -p 8002:8002 -v $(pwd)/models:/models mhosseinifar8/nava-tts:latest
+
+# Pull and run Unified Platform (Port 8000)
+docker run -d --name nava -p 8000:8000 -v $(pwd)/models:/models mhosseinifar8/nava:latest
 ```
 
 ---
 
 ## License
 
-MIT License. Designed and developed for the open-source Persian speech AI community.
-Contributions and issues are welcome on [GitHub](https://github.com/mhosseinifar8/nava).
+MIT License. Crafted and maintained for high-performance Persian speech AI and open-source applications.

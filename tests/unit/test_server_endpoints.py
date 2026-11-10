@@ -188,3 +188,40 @@ class TestWebSockets:
             # Expect completion
             done = ws.receive_json()
             assert done.get("status") == "completed" or done.get("type") == "done"
+
+    def test_websocket_ping_pong(self, client: TestClient):
+        with client.websocket_connect("/v1/ws/tts") as ws:
+            ws.send_json({"type": "ping"})
+            resp = ws.receive_json()
+            assert resp.get("type") == "pong"
+
+        with client.websocket_connect("/v1/ws/stt") as ws:
+            ws.send_json({"type": "ping"})
+            resp = ws.receive_json()
+            assert resp.get("type") == "pong"
+
+
+class TestNLPAndOCREndpoints:
+    def test_sentiment_endpoint(self, client: TestClient):
+        r = client.post("/v1/nlp/sentiment", json={"text": "کیفیت غذا واقعا عالی و تحویل سریع بود"})
+        assert r.status_code == 200
+        data = r.json()
+        assert "label" in data
+        assert "score" in data
+        assert "latency_ms" in data
+
+    def test_sentiment_validation(self, client: TestClient):
+        r = client.post("/v1/nlp/sentiment", json={"text": ""})
+        assert r.status_code == 422
+
+    def test_ocr_base64_endpoint(self, client: TestClient):
+        import base64
+        # Minimal 1x1 GIF / PNG bytes
+        tiny_png = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+        b64 = base64.b64encode(tiny_png).decode("ascii")
+        r = client.post("/v1/ocr/farsi", json={"image_base64": b64})
+        assert r.status_code == 200
+        data = r.json()
+        assert "text" in data
+        assert "model" in data
+

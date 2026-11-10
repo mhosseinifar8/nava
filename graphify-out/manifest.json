@@ -1,0 +1,506 @@
+{
+  ".codebase-memory/artifact.json": {
+    "mtime": 1793701714.1246905,
+    "seen": 1794293079.053909,
+    "ast_hash": "d9b85f506abcc2777cfe6e548ec58d6d",
+    "semantic_hash": "d9b85f506abcc2777cfe6e548ec58d6d"
+  },
+  ".github/workflows/ci.yml": {
+    "mtime": 1794093835.9102237,
+    "seen": 1794293079.053911,
+    "ast_hash": "d97b04268a5e0eb4c74dbbfd4ebabc33",
+    "semantic_hash": "d97b04268a5e0eb4c74dbbfd4ebabc33"
+  },
+  ".github/workflows/docker-publish.yml": {
+    "mtime": 1794133557.8918023,
+    "seen": 1794293079.053913,
+    "ast_hash": "0e2c78ef5977ca63d601e72fa27e1276",
+    "semantic_hash": "0e2c78ef5977ca63d601e72fa27e1276"
+  },
+  ".github/workflows/release.yml": {
+    "mtime": 1794093835.9265375,
+    "seen": 1794293079.053913,
+    "ast_hash": "dc51d9f5c3e1786082a117c6286b029e",
+    "semantic_hash": "dc51d9f5c3e1786082a117c6286b029e"
+  },
+  "docker-compose.yml": {
+    "mtime": 1794231274.6590872,
+    "seen": 1794293079.053914,
+    "ast_hash": "e739ba1fa22b2133593dd249c52c41a3",
+    "semantic_hash": "e739ba1fa22b2133593dd249c52c41a3"
+  },
+  "nava-stt/app/__init__.py": {
+    "mtime": 1793701667.2268097,
+    "seen": 1794293079.053914,
+    "ast_hash": "73583f25861a3547c06927216443bec3",
+    "semantic_hash": "73583f25861a3547c06927216443bec3"
+  },
+  "nava-stt/app/bodylimit.py": {
+    "mtime": 1793705930.2819583,
+    "seen": 1794293079.0539148,
+    "ast_hash": "461e530b984f2d014e8e966918ef389f",
+    "semantic_hash": "461e530b984f2d014e8e966918ef389f"
+  },
+  "nava-stt/app/main.py": {
+    "mtime": 1794238573.4290516,
+    "seen": 1794293079.0539148,
+    "ast_hash": "4f9a75ea162d661d12f3692692932d7d",
+    "semantic_hash": "4f9a75ea162d661d12f3692692932d7d"
+  },
+  "nava-stt/app/settings.py": {
+    "mtime": 1793705930.272618,
+    "seen": 1794293079.0539148,
+    "ast_hash": "c1b456935a82a1dfa56e2b9f6d55d704",
+    "semantic_hash": "c1b456935a82a1dfa56e2b9f6d55d704"
+  },
+  "nava-tts/app/__init__.py": {
+    "mtime": 1793701686.1987023,
+    "seen": 1794293079.053916,
+    "ast_hash": "519594b7ac56c499e1d162aeb2897264",
+    "semantic_hash": "519594b7ac56c499e1d162aeb2897264"
+  },
+  "nava-tts/app/main.py": {
+    "mtime": 1794231469.8218236,
+    "seen": 1794293079.053916,
+    "ast_hash": "968310018380b0754e43ea2896e12230",
+    "semantic_hash": "968310018380b0754e43ea2896e12230"
+  },
+  "nava-tts/app/pocket_config.py": {
+    "mtime": 1793729107.5730076,
+    "seen": 1794293079.053917,
+    "ast_hash": "35c28a84fe172ce195db572e986ed05a",
+    "semantic_hash": "35c28a84fe172ce195db572e986ed05a"
+  },
+  "nava-tts/app/settings.py": {
+    "mtime": 1793705971.2602487,
+    "seen": 1794293079.053917,
+    "ast_hash": "9d57d76effd4a28c936ded2701bd566d",
+    "semantic_hash": "9d57d76effd4a28c936ded2701bd566d"
+  },
+  "nava-tts/app/textpipe.py": {
+    "mtime": 1793705981.379893,
+    "seen": 1794293079.053917,
+    "ast_hash": "9d5b2414ed94f783ab35b862f5a8941f",
+    "semantic_hash": "9d5b2414ed94f783ab35b862f5a8941f"
+  },
+  "nava/__init__.py": {
+    "mtime": 1794136380.845592,
+    "seen": 1794293079.053918,
+    "ast_hash": "85f182124c8cc67e80159da75c846028",
+    "semantic_hash": "85f182124c8cc67e80159da75c846028"
+  },
+  "nava/client.py": {
+    "mtime": 1794092115.6912062,
+    "seen": 1794293079.053918,
+    "ast_hash": "88e424e4df694c02dd05f84dba66024b",
+    "semantic_hash": "88e424e4df694c02dd05f84dba66024b"
+  },
+  "nava/engines/__init__.py": {
+    "mtime": 1794092103.903106,
+    "seen": 1794293079.053919,
+    "ast_hash": "5ab917d76882d90775f45c134f7a6c22",
+    "semantic_hash": "5ab917d76882d90775f45c134f7a6c22"
+  },
+  "nava/engines/base.py": {
+    "mtime": 1794092103.9166176,
+    "seen": 1794293079.053919,
+    "ast_hash": "e3b99dca3b896136bcd3ac56aceb0b8e",
+    "semantic_hash": "e3b99dca3b896136bcd3ac56aceb0b8e"
+  },
+  "nava/engines/factory.py": {
+    "mtime": 1794092103.9283702,
+    "seen": 1794293079.053919,
+    "ast_hash": "347b7e58f7bb7fb25cb11738f0421107",
+    "semantic_hash": "347b7e58f7bb7fb25cb11738f0421107"
+  },
+  "nava/engines/stt_nemotron.py": {
+    "mtime": 1794092103.94122,
+    "seen": 1794293079.05392,
+    "ast_hash": "dece3233d9f5eef718be8a3ad6d83c08",
+    "semantic_hash": "dece3233d9f5eef718be8a3ad6d83c08"
+  },
+  "nava/engines/stt_shenava.py": {
+    "mtime": 1794238573.4619064,
+    "seen": 1794293079.05392,
+    "ast_hash": "4824d1e67272ab21866ea343aaa17a2e",
+    "semantic_hash": "4824d1e67272ab21866ea343aaa17a2e"
+  },
+  "nava/engines/stt_whisper.py": {
+    "mtime": 1794218356.8061275,
+    "seen": 1794293079.053921,
+    "ast_hash": "12094422bba808b12ccac43d367a500b",
+    "semantic_hash": "12094422bba808b12ccac43d367a500b"
+  },
+  "nava/engines/tts_ava.py": {
+    "mtime": 1794231274.6836827,
+    "seen": 1794293079.053921,
+    "ast_hash": "1da291ee447a014618973e8cf81ce9a8",
+    "semantic_hash": "1da291ee447a014618973e8cf81ce9a8"
+  },
+  "nava/engines/tts_matcha.py": {
+    "mtime": 1794231274.719764,
+    "seen": 1794293079.053922,
+    "ast_hash": "40c66d68162437120c1b82cdcad50581",
+    "semantic_hash": "40c66d68162437120c1b82cdcad50581"
+  },
+  "nava/engines/tts_piper.py": {
+    "mtime": 1794092104.0233867,
+    "seen": 1794293079.053922,
+    "ast_hash": "fb95b34ccd591f65292e25ade3bd0cfb",
+    "semantic_hash": "fb95b34ccd591f65292e25ade3bd0cfb"
+  },
+  "nava/engines/tts_pocket.py": {
+    "mtime": 1794092104.0388181,
+    "seen": 1794293079.053922,
+    "ast_hash": "0039d67818c901a25316755a75869098",
+    "semantic_hash": "0039d67818c901a25316755a75869098"
+  },
+  "nava/g2p/__init__.py": {
+    "mtime": 1794092104.0537148,
+    "seen": 1794293079.0539231,
+    "ast_hash": "32897bdaed67a260788320feea686776",
+    "semantic_hash": "32897bdaed67a260788320feea686776"
+  },
+  "nava/g2p/ezafe.py": {
+    "mtime": 1794092104.0680676,
+    "seen": 1794293079.0539231,
+    "ast_hash": "bf20a98bbf7defaefa869f4c06212642",
+    "semantic_hash": "bf20a98bbf7defaefa869f4c06212642"
+  },
+  "nava/g2p/lexicon.py": {
+    "mtime": 1794092104.0912385,
+    "seen": 1794293079.0539231,
+    "ast_hash": "40b02bddc9205f020b4678088447befb",
+    "semantic_hash": "40b02bddc9205f020b4678088447befb"
+  },
+  "nava/g2p/normalizer.py": {
+    "mtime": 1794092115.7674913,
+    "seen": 1794293079.053924,
+    "ast_hash": "6e623b084bb0338655a1ac44af02d824",
+    "semantic_hash": "6e623b084bb0338655a1ac44af02d824"
+  },
+  "nava/g2p/pipeline.py": {
+    "mtime": 1794092104.1165993,
+    "seen": 1794293079.053924,
+    "ast_hash": "f226255864d275b9756ae2cb7df62047",
+    "semantic_hash": "f226255864d275b9756ae2cb7df62047"
+  },
+  "nava/itn/__init__.py": {
+    "mtime": 1794092104.1278594,
+    "seen": 1794293079.053925,
+    "ast_hash": "0cef442dcf69ff44dfc0044b1f2b3ceb",
+    "semantic_hash": "0cef442dcf69ff44dfc0044b1f2b3ceb"
+  },
+  "nava/itn/persian_itn.py": {
+    "mtime": 1794092115.792244,
+    "seen": 1794293079.053925,
+    "ast_hash": "46a4c2c7a319cb466d07f4e30693feea",
+    "semantic_hash": "46a4c2c7a319cb466d07f4e30693feea"
+  },
+  "nava/models/__init__.py": {
+    "mtime": 1794092104.1577818,
+    "seen": 1794293079.053925,
+    "ast_hash": "513ba81cc6423ec340d1aff864150f60",
+    "semantic_hash": "513ba81cc6423ec340d1aff864150f60"
+  },
+  "nava/models/downloader.py": {
+    "mtime": 1794218356.8479466,
+    "seen": 1794293079.053926,
+    "ast_hash": "f755491eb5e445f710e9cb3841a67899",
+    "semantic_hash": "f755491eb5e445f710e9cb3841a67899"
+  },
+  "nava/models/registry.py": {
+    "mtime": 1794218356.8698037,
+    "seen": 1794293079.053926,
+    "ast_hash": "4dfdf7643ec9f669d60ea09f45bd0066",
+    "semantic_hash": "4dfdf7643ec9f669d60ea09f45bd0066"
+  },
+  "nava/server/__init__.py": {
+    "mtime": 1794092104.2438323,
+    "seen": 1794293079.053927,
+    "ast_hash": "0f006648040be1dbbce11bbcdcffe743",
+    "semantic_hash": "0f006648040be1dbbce11bbcdcffe743"
+  },
+  "nava/server/__main__.py": {
+    "mtime": 1794092104.2594914,
+    "seen": 1794293079.053927,
+    "ast_hash": "0bb1b1673d56fbbbac112d85ca266a0a",
+    "semantic_hash": "0bb1b1673d56fbbbac112d85ca266a0a"
+  },
+  "nava/server/app.py": {
+    "mtime": 1794092104.2728405,
+    "seen": 1794293079.053927,
+    "ast_hash": "96504ff4d4cc8802268e8c30948f4d12",
+    "semantic_hash": "96504ff4d4cc8802268e8c30948f4d12"
+  },
+  "nava/server/routes_models.py": {
+    "mtime": 1794092104.286105,
+    "seen": 1794293079.053928,
+    "ast_hash": "e49df584bb7866768cf7afad4d1ac952",
+    "semantic_hash": "e49df584bb7866768cf7afad4d1ac952"
+  },
+  "nava/server/routes_stt.py": {
+    "mtime": 1794224872.8775492,
+    "seen": 1794293079.053928,
+    "ast_hash": "de251f4c3b7e8e2ccb910d2a86835d4a",
+    "semantic_hash": "de251f4c3b7e8e2ccb910d2a86835d4a"
+  },
+  "nava/server/routes_tts.py": {
+    "mtime": 1794224896.760709,
+    "seen": 1794293079.053928,
+    "ast_hash": "c9475b98bd69807f7f0e5b39a6368424",
+    "semantic_hash": "c9475b98bd69807f7f0e5b39a6368424"
+  },
+  "nava/server/routes_voices.py": {
+    "mtime": 1794092104.3332038,
+    "seen": 1794293079.0539289,
+    "ast_hash": "656159f35e6f07574f43e1e35a4d58b5",
+    "semantic_hash": "656159f35e6f07574f43e1e35a4d58b5"
+  },
+  "nava/server/ws_stt.py": {
+    "mtime": 1794238573.477444,
+    "seen": 1794293079.0539289,
+    "ast_hash": "a026f3a90752febf704e69a2046e2821",
+    "semantic_hash": "a026f3a90752febf704e69a2046e2821"
+  },
+  "nava/server/ws_tts.py": {
+    "mtime": 1794231480.8595781,
+    "seen": 1794293079.05393,
+    "ast_hash": "c62f09ccd366f01813c35104ada0877e",
+    "semantic_hash": "c62f09ccd366f01813c35104ada0877e"
+  },
+  "nava/voices/__init__.py": {
+    "mtime": 1794092104.3822396,
+    "seen": 1794293079.05393,
+    "ast_hash": "2c44513b7f24d74bb9a2f8400e30382f",
+    "semantic_hash": "2c44513b7f24d74bb9a2f8400e30382f"
+  },
+  "nava/voices/voice_manager.py": {
+    "mtime": 1794092104.4075024,
+    "seen": 1794293079.053931,
+    "ast_hash": "166545d673f80416424bd6d72dc7b465",
+    "semantic_hash": "166545d673f80416424bd6d72dc7b465"
+  },
+  "nava_fa_speech/__init__.py": {
+    "mtime": 1794092104.4202893,
+    "seen": 1794293079.053931,
+    "ast_hash": "3e5172ae4776a968cf6bb2cedd575548",
+    "semantic_hash": "3e5172ae4776a968cf6bb2cedd575548"
+  },
+  "nava_sdk/nava/__init__.py": {
+    "mtime": 1794092115.9176962,
+    "seen": 1794293079.053931,
+    "ast_hash": "ceb98fd310836a46ccfe3c222f905b0e",
+    "semantic_hash": "ceb98fd310836a46ccfe3c222f905b0e"
+  },
+  "nava_sdk/nava/client.py": {
+    "mtime": 1794093647.5171065,
+    "seen": 1794293079.053932,
+    "ast_hash": "88e424e4df694c02dd05f84dba66024b",
+    "semantic_hash": "88e424e4df694c02dd05f84dba66024b"
+  },
+  "nava_sdk/nava_fa_speech/__init__.py": {
+    "mtime": 1794093836.0011215,
+    "seen": 1794293079.053932,
+    "ast_hash": "3e5172ae4776a968cf6bb2cedd575548",
+    "semantic_hash": "3e5172ae4776a968cf6bb2cedd575548"
+  },
+  "nava_sdk/pyproject.toml": {
+    "mtime": 1794216433.2430031,
+    "seen": 1794293079.053932,
+    "ast_hash": "8b33be2d843e8183cad71b2513b1672b",
+    "semantic_hash": "8b33be2d843e8183cad71b2513b1672b"
+  },
+  "pyproject.toml": {
+    "mtime": 1794237753.6403024,
+    "seen": 1794293079.0539331,
+    "ast_hash": "f64a3fd678fa7e60460c3c8698e007a0",
+    "semantic_hash": "f64a3fd678fa7e60460c3c8698e007a0"
+  },
+  "scripts/build_and_release.sh": {
+    "mtime": 1794093836.0310233,
+    "seen": 1794293079.0539331,
+    "ast_hash": "29c2ff1428b3e906b2901d534fd56662",
+    "semantic_hash": "29c2ff1428b3e906b2901d534fd56662"
+  },
+  "scripts/configure_infra.sh": {
+    "mtime": 1793706641.2278094,
+    "seen": 1794293079.053934,
+    "ast_hash": "c1e03848fc8a02c19248b91cd0bf5b48",
+    "semantic_hash": "c1e03848fc8a02c19248b91cd0bf5b48"
+  },
+  "scripts/docker_build_and_push.py": {
+    "mtime": 1794133558.0082574,
+    "seen": 1794293079.053934,
+    "ast_hash": "d8b2ac1744f1ca603563f53684a9e275",
+    "semantic_hash": "d8b2ac1744f1ca603563f53684a9e275"
+  },
+  "scripts/docker_build_and_push.sh": {
+    "mtime": 1794133558.0449426,
+    "seen": 1794293079.053934,
+    "ast_hash": "7a4aaf759fd870c2739aff987ecacb13",
+    "semantic_hash": "7a4aaf759fd870c2739aff987ecacb13"
+  },
+  "scripts/download_models.py": {
+    "mtime": 1794092104.4829235,
+    "seen": 1794293079.053935,
+    "ast_hash": "f8012f25df98461460d902dedc3e12b7",
+    "semantic_hash": "f8012f25df98461460d902dedc3e12b7"
+  },
+  "scripts/download_models.sh": {
+    "mtime": 1793701652.007826,
+    "seen": 1794293079.053935,
+    "ast_hash": "3b82d463aca78fef25bdd7d16d54fbf0",
+    "semantic_hash": "3b82d463aca78fef25bdd7d16d54fbf0"
+  },
+  "scripts/test_curl.sh": {
+    "mtime": 1794213144.9550898,
+    "seen": 1794293079.0539362,
+    "ast_hash": "15da781fef1bfc96354c8ab6bb818ea5",
+    "semantic_hash": "15da781fef1bfc96354c8ab6bb818ea5"
+  },
+  "scripts/test_nava_services.py": {
+    "mtime": 1794213144.9808116,
+    "seen": 1794293079.0539362,
+    "ast_hash": "c555258d3ad145da0e2408fddba5a35d",
+    "semantic_hash": "c555258d3ad145da0e2408fddba5a35d"
+  },
+  "tests/conftest.py": {
+    "mtime": 1794091871.1688514,
+    "seen": 1794293079.0539362,
+    "ast_hash": "582e7efeb57e7ca68eb6f36e5454dee5",
+    "semantic_hash": "582e7efeb57e7ca68eb6f36e5454dee5"
+  },
+  "tests/integration/test_sdk_integration.py": {
+    "mtime": 1793706304.69336,
+    "seen": 1794293079.053937,
+    "ast_hash": "daeca6a7537ec4b0046af51bd3aad75c",
+    "semantic_hash": "daeca6a7537ec4b0046af51bd3aad75c"
+  },
+  "tests/integration/test_stt_rest.py": {
+    "mtime": 1793706272.3469741,
+    "seen": 1794293079.053937,
+    "ast_hash": "421da6efed33a8ae5de8addff0c4b8f2",
+    "semantic_hash": "421da6efed33a8ae5de8addff0c4b8f2"
+  },
+  "tests/integration/test_tts_rest.py": {
+    "mtime": 1793706272.358062,
+    "seen": 1794293079.053937,
+    "ast_hash": "c25317c30d015e7692eb3fc1308d5eb8",
+    "semantic_hash": "c25317c30d015e7692eb3fc1308d5eb8"
+  },
+  "tests/integration/test_websockets.py": {
+    "mtime": 1793706304.6830263,
+    "seen": 1794293079.053938,
+    "ast_hash": "a1d2fbe426c921e4c0d87b328cac1573",
+    "semantic_hash": "a1d2fbe426c921e4c0d87b328cac1573"
+  },
+  "tests/unit/test_bodylimit.py": {
+    "mtime": 1793706165.0544949,
+    "seen": 1794293079.053938,
+    "ast_hash": "1627ea2ef19ce5188b3578d0678a5f20",
+    "semantic_hash": "1627ea2ef19ce5188b3578d0678a5f20"
+  },
+  "tests/unit/test_g2p_ezafe.py": {
+    "mtime": 1794092104.5148244,
+    "seen": 1794293079.053938,
+    "ast_hash": "dd6b26b5e9d8b813b694dde8e0aa1a8f",
+    "semantic_hash": "dd6b26b5e9d8b813b694dde8e0aa1a8f"
+  },
+  "tests/unit/test_itn.py": {
+    "mtime": 1794092104.528004,
+    "seen": 1794293079.0539389,
+    "ast_hash": "fe88b78dea1161193214e5a02709ce1e",
+    "semantic_hash": "fe88b78dea1161193214e5a02709ce1e"
+  },
+  "tests/unit/test_models_registry.py": {
+    "mtime": 1794092104.5478628,
+    "seen": 1794293079.0539389,
+    "ast_hash": "35e449635359bfb10a15be0db559fcdf",
+    "semantic_hash": "35e449635359bfb10a15be0db559fcdf"
+  },
+  "tests/unit/test_sdk.py": {
+    "mtime": 1793706543.5043275,
+    "seen": 1794293079.05394,
+    "ast_hash": "83a2ac1ab91bc7c992571fc59f7af84d",
+    "semantic_hash": "83a2ac1ab91bc7c992571fc59f7af84d"
+  },
+  "tests/unit/test_server_endpoints.py": {
+    "mtime": 1794092115.992412,
+    "seen": 1794293079.05394,
+    "ast_hash": "0b8310ef76a20802a4ff2581035d5c9e",
+    "semantic_hash": "0b8310ef76a20802a4ff2581035d5c9e"
+  },
+  "tests/unit/test_settings.py": {
+    "mtime": 1793706246.063105,
+    "seen": 1794293079.05394,
+    "ast_hash": "f592e15aafaebfaec97dd1872037b443",
+    "semantic_hash": "f592e15aafaebfaec97dd1872037b443"
+  },
+  "tests/unit/test_stt_shenava_fixes.py": {
+    "mtime": 1794238573.4948812,
+    "seen": 1794293079.053941,
+    "ast_hash": "0693f866cac699d2aed0883045b0e9f7",
+    "semantic_hash": "0693f866cac699d2aed0883045b0e9f7"
+  },
+  "tests/unit/test_textpipe.py": {
+    "mtime": 1793706165.0470963,
+    "seen": 1794293079.053941,
+    "ast_hash": "d541ea9ea11c16f409e5c4fd2214abe7",
+    "semantic_hash": "d541ea9ea11c16f409e5c4fd2214abe7"
+  },
+  "tests/unit/test_voice_cloning.py": {
+    "mtime": 1794092104.5762045,
+    "seen": 1794293079.053942,
+    "ast_hash": "9aaff7405ca9a8c9f78eeafdaafc0bd0",
+    "semantic_hash": "9aaff7405ca9a8c9f78eeafdaafc0bd0"
+  },
+  "README.md": {
+    "mtime": 1794225897.829855,
+    "seen": 1794293079.053942,
+    "ast_hash": "200008bbe67ffc93bc1254b8cc27035b",
+    "semantic_hash": "200008bbe67ffc93bc1254b8cc27035b"
+  },
+  "docs/ARCHITECTURE.md": {
+    "mtime": 1794050943.5444238,
+    "seen": 1794293079.053942,
+    "ast_hash": "70af668bce811d129c9f66e625ce57f5",
+    "semantic_hash": "70af668bce811d129c9f66e625ce57f5"
+  },
+  "docs/USER_MANUAL.md": {
+    "mtime": 1794050943.5447829,
+    "seen": 1794293079.0539432,
+    "ast_hash": "0af53a80bbfa118213afe94bb5018239",
+    "semantic_hash": "0af53a80bbfa118213afe94bb5018239"
+  },
+  "nava-stt/requirements.txt": {
+    "mtime": 1794237748.3048084,
+    "seen": 1794293079.0539432,
+    "ast_hash": "0898e5bb4987f4952b4d12cee5600403",
+    "semantic_hash": "0898e5bb4987f4952b4d12cee5600403"
+  },
+  "nava-tts/requirements.txt": {
+    "mtime": 1794231175.6993408,
+    "seen": 1794293079.053944,
+    "ast_hash": "e324797326b6f22f83940f4775facfa8",
+    "semantic_hash": "e324797326b6f22f83940f4775facfa8"
+  },
+  "nava_sdk/README.md": {
+    "mtime": 1794225897.8972237,
+    "seen": 1794293079.053944,
+    "ast_hash": "9dc40108defd274772ad8bafb19298c1",
+    "semantic_hash": "9dc40108defd274772ad8bafb19298c1"
+  },
+  "tests/README.md": {
+    "mtime": 1793706304.700578,
+    "seen": 1794293079.053944,
+    "ast_hash": "f2e13f530ab4f13d534639326d1adf52",
+    "semantic_hash": "f2e13f530ab4f13d534639326d1adf52"
+  },
+  "tests/requirements.txt": {
+    "mtime": 1793706127.1971552,
+    "seen": 1794293079.053945,
+    "ast_hash": "9a2eb761b34b0064d502fb2871f51b22",
+    "semantic_hash": "9a2eb761b34b0064d502fb2871f51b22"
+  }
+}

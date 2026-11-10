@@ -1,6 +1,6 @@
 """Nava Unified Engine Registry and Factory.
 
-Provides thread-safe lazy-loading and singleton management for STT and TTS engines.
+Provides thread-safe lazy-loading and singleton management for STT, TTS, NLP, and OCR engines.
 """
 from __future__ import annotations
 
@@ -10,17 +10,22 @@ from pathlib import Path
 
 from ..models.registry import get_model
 from .base import BaseSTTEngine, BaseStreamingSTTEngine, BaseTTSEngine
+from .nlp_sentiment import SnappfoodSentimentEngine, get_sentiment_engine
+from .ocr_olmocr import OlmOcrFarsiEngine, get_olmocr_engine
+from .stt_fastconformer import HybridFastConformerEngine
 from .stt_nemotron import NemotronStreamingEngine
+from .stt_parakeet import ParakeetCTCEngine
 from .stt_shenava import ShenavaCTCEngine, ShenavaRNNTEngine, ShenavaStreamingEngine
 from .stt_whisper import FasterWhisperEngine, WhisperSherpaEngine
 from .tts_ava import AvaEngine
+from .tts_chatterbox import ChatterboxGGUFEngine, ChatterboxPyTorchEngine
 from .tts_matcha import MatchaEngine
 from .tts_piper import PiperEngine
 from .tts_pocket import PocketEngine
 
 
 class EngineManager:
-    """Thread-safe manager for lazy loading of STT and TTS engines."""
+    """Thread-safe manager for lazy loading of STT, TTS, NLP, and OCR engines."""
 
     def __init__(self, models_dir: Path | str | None = None):
         if models_dir:
@@ -43,17 +48,22 @@ class EngineManager:
 
             model_path = model_info.get_local_path(self.models_dir)
 
-            if canon_id in ("shenava-koochik-ctc", "shenava-115m-flagship"):
+            if canon_id == "parakeet-ctc-109m-farsi":
+                engine = ParakeetCTCEngine(canon_id, model_path)
+            elif canon_id == "fastconformer-hybrid-large":
+                engine = HybridFastConformerEngine(canon_id, model_path, default_mode="ctc")
+            elif canon_id in ("nemotron-asr-streaming-farsi", "nemotron-streaming-podcast"):
+                engine = NemotronStreamingEngine(canon_id, model_path)
+            elif canon_id in ("shenava-koochik-ctc", "shenava-115m-flagship"):
                 engine = ShenavaCTCEngine(canon_id, model_path)
             elif canon_id == "shenava-koochik-v1.5-rnnt":
                 engine = ShenavaRNNTEngine(canon_id, model_path)
             elif canon_id in ("shenava-rizeh-streaming-32m", "shenava-rizeh-pizeh-6.9m"):
                 engine = ShenavaStreamingEngine(canon_id, model_path)
-            elif canon_id == "nemotron-streaming-farsi":
-                engine = NemotronStreamingEngine(canon_id, model_path)
             elif canon_id == "whisper-turbo-persian-sherpa":
                 engine = WhisperSherpaEngine(canon_id, model_path)
             elif canon_id in (
+                "whisper-large-v3-farsi-cv17",
                 "whisper-turbo-persian-givia",
                 "whisper-turbo-persian-gholizadeh",
                 "whisper-large-v3",
@@ -76,14 +86,18 @@ class EngineManager:
 
             model_path = model_info.get_local_path(self.models_dir)
 
-            if canon_id in ("piper-mana-lca", "piper-voices-fa"):
+            if canon_id in ("pocket-tts-farsi-v2", "pocket-tts-farsi", "nava-fa-clone"):
+                engine = PocketEngine(canon_id, model_path)
+            elif canon_id in ("chatterbox-tts-persian-gguf", "chatterbox-tts-persian-mazrba"):
+                engine = ChatterboxGGUFEngine(canon_id, model_path)
+            elif canon_id == "chatterbox-tts-persian-torch":
+                engine = ChatterboxPyTorchEngine(canon_id, model_path)
+            elif canon_id in ("piper-mana-lca", "piper-voices-fa"):
                 engine = PiperEngine(canon_id, model_path)
             elif canon_id == "ava-82m":
                 engine = AvaEngine.get_singleton(canon_id, model_path)
             elif canon_id in ("matcha-khadijah-fa-en", "matcha-musa-fa-en"):
                 engine = MatchaEngine(canon_id, model_path)
-            elif canon_id in ("pocket-tts-farsi", "nava-fa-clone"):
-                engine = PocketEngine(canon_id, model_path)
             else:
                 engine = PiperEngine(canon_id, model_path)
 
@@ -94,6 +108,10 @@ class EngineManager:
 _GLOBAL_ENGINE_MGR = EngineManager()
 
 
+def get_engine_manager() -> EngineManager:
+    return _GLOBAL_ENGINE_MGR
+
+
 def get_stt_engine(model_id: str = "shenava-koochik-ctc") -> BaseSTTEngine:
     return _GLOBAL_ENGINE_MGR.get_stt_engine(model_id)
 
@@ -101,3 +119,10 @@ def get_stt_engine(model_id: str = "shenava-koochik-ctc") -> BaseSTTEngine:
 def get_tts_engine(model_id: str = "piper-mana-lca") -> BaseTTSEngine:
     return _GLOBAL_ENGINE_MGR.get_tts_engine(model_id)
 
+
+def get_nlp_sentiment_engine() -> SnappfoodSentimentEngine:
+    return get_sentiment_engine(_GLOBAL_ENGINE_MGR.models_dir)
+
+
+def get_document_ocr_engine() -> OlmOcrFarsiEngine:
+    return get_olmocr_engine(_GLOBAL_ENGINE_MGR.models_dir)

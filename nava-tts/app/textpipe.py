@@ -1,7 +1,7 @@
 """Persian text normalisation, lexicon overrides and chunking.
 
-Pure stdlib (no torch/piper/pocket imports) so it can be unit-tested and
-reused independently of the heavy inference stack.
+Pure stdlib (no heavy inference stack dependencies) so it can be unit-tested
+and reused independently across microservices.
 """
 from __future__ import annotations
 
@@ -10,17 +10,26 @@ import re
 from pathlib import Path
 from typing import Callable
 
-ARABIC_TO_PERSIAN = str.maketrans({"ي":"ی", "ى":"ی", "ك":"ک", "ؤ":"و", "إ":"ا", "أ":"ا", "ة":"ه", "ۀ":"هٔ"})
-PHONEME_ALIASES = str.maketrans({"/":"a", "a":"A", "@":"?", "$":"S", "c":"C"})
+from nava.g2p.normalizer import (
+    ARABIC_TO_PERSIAN,
+    COMPOUND_WORDS_FIXES,
+    PersianClauseSplitter,
+    clean_text_for_matcha,
+    repair_zwnj_and_compounds,
+)
+
+PHONEME_ALIASES = str.maketrans({"/": "a", "a": "A", "@": "?", "$": "S", "c": "C"})
 
 _STRIP = re.compile(r"[^\w\s،؛.!؟,:()\-]")
 _WS = re.compile(r"\s+")
 _SENTENCE_SPLIT = re.compile(r"(?<=[.،؛!؟\n])\s*")
 
 
-def normalize(text: str) -> str:
+def normalize(text: str, keep_zwnj: bool = False) -> str:
     """Fold Arabic chars to Persian, drop unsupported symbols, collapse whitespace."""
-    folded = text.translate(ARABIC_TO_PERSIAN).replace("\u200c", " ")
+    folded = text.translate(ARABIC_TO_PERSIAN)
+    if not keep_zwnj:
+        folded = folded.replace("\u200c", " ")
     return _WS.sub(" ", _STRIP.sub(" ", folded)).strip()
 
 
@@ -35,16 +44,12 @@ def chunk_pocket(text: str, max_words: int = 12) -> list[str]:
     for sentence in split_sentences(text):
         words = sentence.split()
         for i in range(0, len(words), max_words):
-            chunks.append(" ".join(words[i:i + max_words]))
+            chunks.append(" ".join(words[i : i + max_words]))
     return chunks
 
 
 def fit_token_budget(phonemes: str, max_tokens: int, count_tokens: Callable[[str], int]) -> list[str]:
-    """Split a phoneme string into parts that each satisfy count_tokens(part) <= max_tokens.
-
-    A single token-word that alone exceeds the budget is passed through
-    unchanged; the engine's own guard reports it as an error.
-    """
+    """Split a phoneme string into parts that each satisfy count_tokens(part) <= max_tokens."""
     if not phonemes:
         return []
     if count_tokens(phonemes) <= max_tokens:
@@ -80,7 +85,7 @@ def apply_phoneme_overrides(phonemes: str, lexicon: dict) -> str:
 
 
 def load_lexicon(path: Path | str) -> dict:
-    """Load an optional JSON lexicon {\"surface\": {...}, \"phonemes\": {...}}; missing file = empty."""
+    """Load an optional JSON lexicon {"surface": {...}, "phonemes": {...}}; missing file = empty."""
     try:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
     except FileNotFoundError:

@@ -302,6 +302,12 @@ async def websocket_stt(ws: WebSocket) -> None:
                     continue
 
                 if isinstance(control, dict):
+                    msg_type = control.get("type")
+                    action = control.get("action")
+                    if msg_type == "ping" or action == "ping":
+                        await ws.send_json({"type": "pong", "status": "ok"})
+                        continue
+
                     # Update configuration
                     for k in ("model", "engine", "initial_prompt", "hotwords", "enable_itn"):
                         if k in control and control[k] is not None:
