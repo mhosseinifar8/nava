@@ -33,6 +33,44 @@ def compute_sha256(filepath: Path, chunk_size: int = 1024 * 1024) -> str:
     return hasher.hexdigest()
 
 
+def get_hf_token(explicit_token: str | None = None) -> str | None:
+    """Resolve Hugging Face User Access Token from CLI argument, environment, or local cache."""
+    if explicit_token and explicit_token.strip():
+        return explicit_token.strip()
+    for env_var in ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN", "HF_API_TOKEN"):
+        val = os.getenv(env_var)
+        if val and val.strip():
+            return val.strip()
+    try:
+        from huggingface_hub import get_token
+        t = get_token()
+        if t and t.strip():
+            return t.strip()
+    except Exception:
+        pass
+    token_file = Path.home() / ".cache" / "huggingface" / "token"
+    if token_file.exists():
+        try:
+            t = token_file.read_text(encoding="utf-8").strip()
+            if t:
+                return t
+        except Exception:
+            pass
+    return None
+
+
+def save_hf_token(token: str) -> Path:
+    """Save Hugging Face token to local cache (~/.cache/huggingface/token)."""
+    token = token.strip()
+    token_dir = Path.home() / ".cache" / "huggingface"
+    token_dir.mkdir(parents=True, exist_ok=True)
+    token_file = token_dir / "token"
+    token_file.write_text(token, encoding="utf-8")
+    for k in ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN"):
+        os.environ[k] = token
+    return token_file
+
+
 def _download_http_fallback(
     url: str,
     destination: Path,
@@ -49,11 +87,12 @@ def _download_http_fallback(
     if temp_path.exists() and temp_path.stat().st_size > 0:
         downloaded = temp_path.stat().st_size
 
+    token = get_hf_token(hf_token)
     headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
-    if hf_token:
-        headers["Authorization"] = f"Bearer {hf_token}"
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
 
     proxy_url = proxy or os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY") or os.getenv("all_proxy")
     proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
@@ -174,7 +213,7 @@ def download_file(
 
     subfolder = mf.subfolder or ""
     source_filename = mf.filename
-    effective_token = hf_token or os.getenv("HF_TOKEN") or os.getenv("HUGGING_FACE_HUB_TOKEN")
+    effective_token = get_hf_token(hf_token)
 
     # Attempt download via huggingface_hub first
     hf_success = False
@@ -198,6 +237,12 @@ def download_file(
                 shutil.move(str(downloaded_p), str(dest))
         hf_success = dest.exists()
     except Exception as e:
+        err_msg = str(e)
+        if "401" in err_msg or "403" in err_msg or "gated" in err_msg.lower():
+            if not quiet:
+                print(f"  [Hugging Face Authentication Required for '{repo_id}']")
+                print(f"  Visit https://huggingface.co/{repo_id} and request access.")
+                print(f"  Then pass token: nava-download --token <HF_TOKEN> or export HF_TOKEN=\"...\"")
         if not quiet:
             print(f"  huggingface_hub download failed ({e}), falling back to direct HTTP...")
 
@@ -281,8 +326,12 @@ def download_model(
                 proxy=proxy,
             )
         except Exception as exc:
+            if mf.optional:
+                if not quiet:
+                    print(f"  [Notice] Optional file '{mf.filename}' skipped: {exc}")
+                continue
             if not quiet:
-                print(f"  [Error] Failed to download {mf.filename}: {exc}")
+                print(f"  [Error] Failed to download '{mf.filename}': {exc}")
             return False
 
     # Check for default voice symlinks if downloading pocket or piper
@@ -387,8 +436,26 @@ def main() -> int:
         default=os.getenv("HF_TOKEN") or os.getenv("HUGGING_FACE_HUB_TOKEN"),
         help="Hugging Face User Access Token (from https://huggingface.co/settings/tokens)",
     )
+    parser.add_argument(
+        "--login",
+        action="store_true",
+        help="Interactively save Hugging Face User Access Token to ~/.cache/huggingface/token",
+    )
 
     args = parser.parse_args()
+
+    if args.login:
+        print("\n--- Nava Hugging Face Authentication ---")
+        print("Obtain your User Access Token from: https://huggingface.co/settings/tokens")
+        token_input = input("Enter Hugging Face Token (hf_...): ").strip()
+        if token_input:
+            p = save_hf_token(token_input)
+            print(f"[Success] Token saved to {p}")
+            return 0
+        else:
+            print("Error: No token entered.")
+            return 1
+
     models_dir = Path(args.models_dir) if args.models_dir else None
 
     # Propagate proxy and HF token to environment for libraries

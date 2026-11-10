@@ -22,6 +22,7 @@ class ModelFile:
     size_bytes: int | None = None
     subfolder: str | None = None
     repo_id: str | None = None
+    optional: bool = False
 
 
 @dataclass(frozen=True)
@@ -51,6 +52,8 @@ class ModelInfo:
         if not self.files:
             return False
         for mf in self.files:
+            if mf.optional:
+                continue
             rel = mf.target_path or mf.filename
             p = base / rel
             if not p.is_file() or p.stat().st_size == 0:
@@ -116,11 +119,10 @@ _register(
         type="stt",
         repo_id="Peacockery/parakeet-ctc-109m-farsi",
         files=(
-            ModelFile("model.onnx"),
-            ModelFile("tokens.txt"),
+            ModelFile("model.nemo"),
         ),
-        size_mb=218.0,
-        ram_mb=350.0,
+        size_mb=415.0,
+        ram_mb=500.0,
         rtf_class=0.015,
         streaming=True,
         hotwords=False,
@@ -138,8 +140,7 @@ _register(
         type="stt",
         repo_id="nvidia/stt_fa_fastconformer_hybrid_large",
         files=(
-            ModelFile("model.onnx"),
-            ModelFile("tokens.txt"),
+            ModelFile("stt_fa_fastconformer_hybrid_large.nemo"),
         ),
         size_mb=460.0,
         ram_mb=900.0,
@@ -160,13 +161,12 @@ _register(
         type="stt",
         repo_id="mehdi-hf/nemotron-asr-streaming-farsi",
         files=(
-            ModelFile("encoder.int8.onnx"),
-            ModelFile("decoder.int8.onnx"),
-            ModelFile("joiner.int8.onnx"),
-            ModelFile("tokens.txt"),
+            ModelFile("nemotron-asr-streaming-farsi.nemo"),
+            ModelFile("config.json"),
+            ModelFile("tokenizer.json"),
         ),
-        size_mb=120.0,
-        ram_mb=250.0,
+        size_mb=450.0,
+        ram_mb=650.0,
         rtf_class=0.035,
         streaming=True,
         hotwords=True,
@@ -184,13 +184,12 @@ _register(
         type="stt",
         repo_id="mehdi-hf/nemotron-asr-streaming-farsi",
         files=(
-            ModelFile("encoder.int8.onnx"),
-            ModelFile("decoder.int8.onnx"),
-            ModelFile("joiner.int8.onnx"),
-            ModelFile("tokens.txt"),
+            ModelFile("nemotron-asr-streaming-farsi.nemo"),
+            ModelFile("config.json"),
+            ModelFile("tokenizer.json"),
         ),
-        size_mb=120.0,
-        ram_mb=250.0,
+        size_mb=450.0,
+        ram_mb=650.0,
         rtf_class=0.035,
         streaming=True,
         hotwords=True,
@@ -208,13 +207,12 @@ _register(
         type="stt",
         repo_id="MohammadGholizadeh/nemotron-asr-streaming-farsi-podcast",
         files=(
-            ModelFile("encoder.int8.onnx"),
-            ModelFile("decoder.int8.onnx"),
-            ModelFile("joiner.int8.onnx"),
-            ModelFile("tokens.txt"),
+            ModelFile("nemotron-asr-streaming-farsi-podcast.nemo"),
+            ModelFile("config.json"),
+            ModelFile("tokenizer.json"),
         ),
-        size_mb=120.0,
-        ram_mb=250.0,
+        size_mb=450.0,
+        ram_mb=650.0,
         rtf_class=0.035,
         streaming=True,
         hotwords=True,
@@ -228,17 +226,21 @@ _register(
 _register(
     ModelInfo(
         id="whisper-large-v3-farsi-cv17",
-        name="Whisper Large-v3 Persian CV17 (CTranslate2 INT8)",
+        name="Whisper Large-v3 Persian CV17 (Hugging Face / CTranslate2)",
         type="stt",
         repo_id="mohammadjavadnasri/whisper-large-v3-farsi-cv17",
         files=(
-            ModelFile("model.bin"),
-            ModelFile("tokenizer.json"),
             ModelFile("config.json"),
-            ModelFile("vocabulary.json"),
+            ModelFile("generation_config.json", optional=True),
+            ModelFile("tokenizer_config.json"),
+            ModelFile("vocab.json"),
+            ModelFile("merges.txt"),
+            ModelFile("model-00001-of-00002.safetensors"),
+            ModelFile("model-00002-of-00002.safetensors"),
+            ModelFile("model.safetensors.index.json"),
         ),
-        size_mb=1550.0,
-        ram_mb=2400.0,
+        size_mb=3100.0,
+        ram_mb=4200.0,
         rtf_class=0.11,
         streaming=False,
         hotwords=True,
@@ -580,9 +582,10 @@ _register(
         type="tts",
         repo_id="mehdi-hf/pocket-tts-farsi",
         files=(
-            ModelFile("model.yaml"),
+            ModelFile("farsi.yaml", target_path="model.yaml"),
             ModelFile("model.safetensors"),
-            ModelFile("tokenizer_ph.model"),
+            ModelFile("tokenizer.model", target_path="tokenizer_ph.model"),
+            ModelFile("example_voice.wav", optional=True),
         ),
         size_mb=440.0,
         ram_mb=850.0,
@@ -603,10 +606,11 @@ _register(
         type="tts",
         repo_id="mup99ma/Chatterbox-TTS-Persian-gguf",
         files=(
-            ModelFile("model.gguf"),
+            ModelFile("chatterbox-t3-fa-f16.gguf"),
+            ModelFile("chatterbox-s3gen-q8_0.gguf"),
         ),
-        size_mb=320.0,
-        ram_mb=650.0,
+        size_mb=1505.0,
+        ram_mb=2100.0,
         rtf_class=0.08,
         streaming=True,
         sample_rate=24000,
@@ -623,10 +627,11 @@ _register(
         type="tts",
         repo_id="mazrba/Chatterbox-TTS-Persian-gguf",
         files=(
-            ModelFile("model.gguf"),
+            ModelFile("chatterbox-t3-fa-f16.gguf"),
+            ModelFile("chatterbox-s3gen-q8_0.gguf"),
         ),
-        size_mb=320.0,
-        ram_mb=650.0,
+        size_mb=1505.0,
+        ram_mb=2100.0,
         rtf_class=0.08,
         streaming=True,
         sample_rate=24000,
@@ -643,9 +648,7 @@ _register(
         type="tts",
         repo_id="Thomcles/Chatterbox-TTS-Persian-Farsi",
         files=(
-            ModelFile("model.safetensors"),
-            ModelFile("config.json"),
-            ModelFile("tokenizer.json"),
+            ModelFile("t3_fa.safetensors"),
         ),
         size_mb=680.0,
         ram_mb=1200.0,
@@ -653,7 +656,7 @@ _register(
         streaming=True,
         sample_rate=24000,
         profiles=("high-accuracy", "all"),
-        description="PyTorch Chatterbox Persian TTS with AVX-512 bfloat16 / int8 dynamic quantization",
+        description="PyTorch Chatterbox Persian TTS with AVX-512 bfloat16 / int8 dynamic quantization (Gated Model, requires HF token)",
         engine_name="chatterbox_torch",
     )
 )
@@ -820,18 +823,20 @@ _register(
         id="snappfood-sentiment-analysis",
         name="Snappfood Persian Sentiment Analysis",
         type="nlp",
-        repo_id="ParsiAI/snappfood-sentiment-analysis",
+        repo_id="HooshvareLab/bert-fa-base-uncased-sentiment-snappfood",
         files=(
-            ModelFile("model.onnx"),
             ModelFile("config.json"),
-            ModelFile("tokenizer.json"),
+            ModelFile("pytorch_model.bin"),
+            ModelFile("vocab.txt"),
+            ModelFile("tokenizer_config.json"),
+            ModelFile("special_tokens_map.json", optional=True),
         ),
-        size_mb=110.0,
-        ram_mb=180.0,
+        size_mb=650.0,
+        ram_mb=800.0,
         rtf_class=0.005,
         streaming=False,
         profiles=("all",),
-        description="Low-latency Persian text sentiment classification (< 15ms ONNX INT8)",
+        description="Low-latency Persian text sentiment classification (< 15ms CPU execution, fine-tuned on Snappfood dataset)",
         engine_name="snappfood_sentiment",
     )
 )

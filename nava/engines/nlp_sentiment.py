@@ -45,6 +45,20 @@ class SnappfoodSentimentEngine:
                 pass
             return self.session
 
+        # PyTorch model fallback (HooshvareLab ParsBERT)
+        torch_bin = self.model_dir / "pytorch_model.bin"
+        if torch_bin.exists():
+            try:
+                import torch
+                from transformers import AutoModelForSequenceClassification, AutoTokenizer
+
+                self.tokenizer = AutoTokenizer.from_pretrained(str(self.model_dir), local_files_only=True)
+                self.torch_model = AutoModelForSequenceClassification.from_pretrained(str(self.model_dir), local_files_only=True)
+                self.torch_model.eval()
+                return self.torch_model
+            except Exception:
+                pass
+
         return None
 
     def analyze(self, text: str) -> dict[str, Any]:

@@ -154,7 +154,9 @@ class ChatterboxPyTorchEngine(BaseTTSEngine):
         if self.model is not None:
             return self.model
 
-        weights_file = self.model_dir / "model.safetensors"
+        weights_file = self.model_dir / "t3_fa.safetensors"
+        if not weights_file.exists():
+            weights_file = self.model_dir / "model.safetensors"
         if not weights_file.exists():
             weights_file = self.model_dir / "pytorch_model.bin"
         if not weights_file.exists():

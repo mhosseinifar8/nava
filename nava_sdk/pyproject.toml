@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nava-fa-speech"
-version = "3.0.0"
+version = "3.0.1"
 description = "Official Python SDK and Client for Nava Persian Offline Speech Platform (Multi-Engine STT, TTS, G2P, Voice Cloning)"
 readme = "README.md"
 authors = [
