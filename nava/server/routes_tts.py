@@ -3,14 +3,17 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import logging
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
+from ..engines.base import ModelNotInstalledError
 from ..engines.factory import get_tts_engine
 
+logger = logging.getLogger("nava.tts")
 router = APIRouter(tags=["TTS"])
 
 
@@ -74,7 +77,11 @@ async def generate_speech(payload: SpeechRequest) -> Response:
                 reference_audio=ref_audio_bytes,
             ),
         )
+    except (ModelNotInstalledError, RuntimeError) as exc:
+        logger.error(f"Speech synthesis unavailable for '{model_name}': {exc}")
+        raise HTTPException(503, f"Speech synthesis unavailable: {exc}") from exc
     except Exception as exc:
+        logger.error(f"Speech synthesis failed for '{model_name}': {exc}")
         raise HTTPException(500, f"Speech synthesis failed: {exc}") from exc
 
     headers = {

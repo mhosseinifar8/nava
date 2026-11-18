@@ -129,6 +129,21 @@ def check_health_and_models(host: str, stt_port: int, tts_port: int, unified_por
     except Exception:
         print(f"  Note: Unified server (: {unified_port}) is optional (microservices STT: {stt_port} & TTS: {tts_port} active).")
 
+    # Model catalog is also exposed on STT (client uses stt_url/v1/models)
+    try:
+        m_res = requests.get(f"http://{host}:{stt_port}/v1/models", timeout=5)
+        if m_res.status_code == 200:
+            models = m_res.json()
+            installed = [m for m in models if m.get("installed")]
+            print_ok(
+                f"STT /v1/models OK — {len(models)} registered, {len(installed)} installed"
+            )
+            info["models"] = True
+        else:
+            print_warn(f"STT /v1/models returned HTTP {m_res.status_code}: {m_res.text}")
+    except Exception as e:
+        print_err(f"Cannot reach STT /v1/models at http://{host}:{stt_port}/v1/models: {e}")
+
     return info
 
 

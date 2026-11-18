@@ -22,12 +22,16 @@ class DownloadRequest(BaseModel):
 
 
 @router.get("/v1/models")
+@router.get("/api/v1/models")
+@router.get("/v1/v1/models")
 async def get_models(type: str | None = None) -> list[dict[str, Any]]:
     """List all registered models, installation status, RAM footprint, and features."""
     return list_models(model_type=type)  # type: ignore
 
 
 @router.post("/v1/models/download")
+@router.post("/api/v1/models/download")
+@router.post("/v1/v1/models/download")
 async def post_download_model(
     payload: DownloadRequest,
     background_tasks: BackgroundTasks,

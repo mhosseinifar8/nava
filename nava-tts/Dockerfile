@@ -18,8 +18,13 @@ RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
       sed -i 's|http://deb.debian.org/debian|http://linux-mirror.liara.ir/repository/debian/|g' /etc/apt/sources.list; \
     fi
 
-# System dependencies for audio synthesis
-RUN apt-get update && apt-get install -y --no-install-recommends libsndfile1 git && rm -rf /var/lib/apt/lists/*
+# System dependencies for audio synthesis (libsndfile1 + espeak-ng-data for Matcha/Piper FA-EN phonemization)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libsndfile1 \
+    espeak-ng \
+    espeak-ng-data \
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
 # Configure Liara mirror for pip
 RUN pip config set global.index-url https://package-mirror.liara.ir/repository/pypi/simple && \

@@ -874,6 +874,8 @@ ALIASES: dict[str, str] = {
     "chatterbox": "chatterbox-tts-persian-gguf",
     "chatterbox-gguf": "chatterbox-tts-persian-gguf",
     "chatterbox-torch": "chatterbox-tts-persian-torch",
+    "chatterbox-tts-persian-farsi": "chatterbox-tts-persian-torch",
+    "thomcles/chatterbox-tts-persian-farsi": "chatterbox-tts-persian-torch",
     "mana": "piper-mana-lca",
     "piper": "piper-voices-fa",
     "ava": "ava-82m",

@@ -21,6 +21,8 @@ RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
 # Install essential runtime and audio system libraries
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libsndfile1 \
+    espeak-ng \
+    espeak-ng-data \
     ffmpeg \
     git \
     && rm -rf /var/lib/apt/lists/*

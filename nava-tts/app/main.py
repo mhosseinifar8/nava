@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import io
 import json
+import logging
 import threading
 import wave
 from collections.abc import AsyncIterator
@@ -15,6 +16,8 @@ from typing import Any
 import numpy as np
 
 import os
+
+logger = logging.getLogger("nava.tts")
 
 try:
     import onnxruntime as ort
@@ -37,7 +40,7 @@ except ImportError:
     torch = None
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field, model_validator
 
 from .pocket_config import localize_pocket_config
@@ -69,6 +72,7 @@ class Speech(BaseModel):
     g2p_mode: str = Field("lca_albert", description="G2P pre-processor pipeline mode")
     custom_dictionary: dict[str, str] | None = None
     reference_audio_base64: str | None = None
+    response_format: str = Field("pcm", description="Output audio format (pcm, wav)")
 
     @model_validator(mode="before")
     @classmethod
@@ -262,6 +266,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Model catalog + download (same routes as unified server)
+try:
+    from nava.server.routes_models import router as models_router
+
+    app.include_router(models_router)
+except Exception as exc:  # pragma: no cover - keep TTS up if optional import fails
+    print(f"Warning: /v1/models routes unavailable: {exc}")
+
 
 async def cpu(fn, *args):
     return await asyncio.get_running_loop().run_in_executor(app.state.pool, fn, *args)
@@ -271,6 +283,32 @@ def gap_bytes(rate: int) -> bytes:
     return np.zeros(round(rate * 0.150), dtype="<i2").tobytes()
 
 
+def pcm_to_wav(pcm_bytes: bytes, sample_rate: int) -> bytes:
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(int(sample_rate))
+        wf.writeframes(pcm_bytes)
+    return buf.getvalue()
+
+
+def _resolve_sample_rate(engine_name: str, default_rate: int = 22050) -> int:
+    try:
+        from nava.engines.factory import get_tts_engine
+        eng = get_tts_engine(engine_name)
+        rate = getattr(eng, "sample_rate", None)
+        if rate:
+            return int(rate)
+    except Exception:
+        pass
+    alias_map = {"piper-mana-lca": "mana", "piper-voices-fa": "piper", "pocket-tts-farsi": "pocket"}
+    local_key = alias_map.get(engine_name, engine_name)
+    if local_key in app.state.engines:
+        return int(app.state.engines[local_key].rate)
+    return default_rate
+
+
 async def produce(payload: Speech) -> AsyncIterator[bytes]:
     effective_engine = payload.model or payload.engine or "pocket"
     effective_voice = payload.voice or payload.voice_prompt or "default"
@@ -278,7 +316,7 @@ async def produce(payload: Speech) -> AsyncIterator[bytes]:
     if not text_content or not text_content.strip():
         raise ValueError("text has no speakable content")
 
-    # Try unified Nava Engine Manager first (supports matcha, ava, pocket, piper, etc.)
+    # Try unified Nava Engine Manager first (supports matcha, ava, pocket, piper, chatterbox, etc.)
     try:
         from nava.engines.factory import get_tts_engine
         engine = get_tts_engine(effective_engine)
@@ -297,14 +335,16 @@ async def produce(payload: Speech) -> AsyncIterator[bytes]:
             custom_dictionary=payload.custom_dictionary,
             reference_audio=ref_bytes,
         ):
-            yield chunk
+            if chunk:
+                yield chunk
         return
     except Exception as exc:
-        # Check if local fallback engine is available
+        logger.error(f"Unified TTS engine '{effective_engine}' failed: {exc}")
+        # Check if an exact matching local fallback engine is available
         alias_map = {"piper-mana-lca": "mana", "piper-voices-fa": "piper", "pocket-tts-farsi": "pocket"}
         local_key = alias_map.get(effective_engine, effective_engine)
         if local_key not in app.state.engines:
-            # If unified engine failed due to missing model, re-raise with clear guidance
+            # Re-raise with clear diagnostic message (never silently emit a fake beep)
             raise RuntimeError(f"Engine '{effective_engine}' error: {exc}") from exc
         effective_engine = local_key
 
@@ -391,15 +431,6 @@ async def speech(payload: Speech):
         raise HTTPException(422, "Text content ('input' or 'text') is required and cannot be empty")
 
     engine_name = payload.model or payload.engine or "pocket"
-    rate = 22050
-    try:
-        from nava.engines.factory import get_tts_engine
-        eng = get_tts_engine(engine_name)
-        rate = getattr(eng, "sample_rate", 22050)
-    except Exception:
-        if engine_name in app.state.engines:
-            rate = app.state.engines[engine_name].rate
-
     stream = produce(payload)
     try:
         first = await stream.__anext__()
@@ -410,15 +441,32 @@ async def speech(payload: Speech):
     except RuntimeError as exc:
         raise HTTPException(503, str(exc)) from exc
 
+    # Resolve sample rate AFTER first chunk so lazy-loaded engines report their exact sample rate
+    rate = _resolve_sample_rate(engine_name)
+    headers = {"X-Nava-Sample-Rate": str(rate), "X-Nava-Engine": engine_name}
+
+    fmt = (payload.response_format or "pcm").lower()
+    if fmt == "wav":
+        chunks: list[bytes] = [first]
+        try:
+            async for chunk in stream:
+                if chunk:
+                    chunks.append(chunk)
+        except RuntimeError as exc:
+            raise HTTPException(503, str(exc)) from exc
+        wav_bytes = pcm_to_wav(b"".join(chunks), rate)
+        return Response(content=wav_bytes, media_type="audio/wav", headers=headers)
+
     async def body() -> AsyncIterator[bytes]:
         yield first
         async for chunk in stream:
-            yield chunk
+            if chunk:
+                yield chunk
 
     return StreamingResponse(
         body(),
         media_type=f"audio/L16;rate={rate};channels=1",
-        headers={"X-Nava-Sample-Rate": str(rate), "X-Nava-Engine": engine_name},
+        headers=headers,
     )
 
 
@@ -492,17 +540,6 @@ async def websocket_tts(ws: WebSocket):
                 voice_name = current_config.get("voice", "default")
                 speed = float(current_config.get("speed", 1.0))
 
-                rate = 22050
-                try:
-                    from nava.engines.factory import get_tts_engine
-                    eng = get_tts_engine(engine_name)
-                    rate = getattr(eng, "sample_rate", 22050)
-                except Exception:
-                    if engine_name in app.state.engines:
-                        rate = app.state.engines[engine_name].rate
-
-                await ws.send_json({"status": "streaming", "engine": engine_name, "sample_rate": rate})
-
                 speech_obj = Speech(
                     text=text_to_speak,
                     engine=engine_name,
@@ -511,10 +548,20 @@ async def websocket_tts(ws: WebSocket):
                     g2p_mode=current_config.get("g2p_mode", "lca_albert"),
                     custom_dictionary=current_config.get("custom_dictionary"),
                 )
-                async for audio in produce(speech_obj):
-                    await ws.send_bytes(audio)
+                stream = produce(speech_obj)
+                first_chunk = await stream.__anext__()
+                rate = _resolve_sample_rate(engine_name)
+                await ws.send_json({"status": "streaming", "engine": engine_name, "sample_rate": rate})
+                if first_chunk:
+                    await ws.send_bytes(first_chunk)
+                async for audio in stream:
+                    if audio:
+                        await ws.send_bytes(audio)
                 await ws.send_json({"status": "completed"})
+            except StopAsyncIteration:
+                await ws.send_json({"status": "error", "error": "text produced no audio"})
             except Exception as exc:
+                logger.error(f"WebSocket TTS error for '{current_config.get('engine')}': {exc}")
                 await ws.send_json({"status": "error", "error": str(exc)})
     except WebSocketDisconnect:
         return

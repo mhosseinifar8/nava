@@ -120,27 +120,32 @@ async def websocket_tts_endpoint(ws: WebSocket) -> None:
                     await ws.send_json({"status": "error", "error": str(e), "recoverable": True})
                     continue
 
-                sample_rate = getattr(engine, "sample_rate", 22050)
-
-                # Send streaming start metadata
-                await ws.send_json({
-                    "status": "streaming",
-                    "type": "streaming",
-                    "engine": config["model"],
-                    "model": config["model"],
-                    "sample_rate": sample_rate,
-                })
-
                 try:
-                    # Stream chunks sentence-by-sentence / clause-by-clause
-                    async for chunk in engine.synthesize_stream(
+                    stream = engine.synthesize_stream(
                         text_to_speak,
                         voice=config["voice"],
                         speed=float(config["speed"]),
                         g2p_mode=config["g2p_mode"],
                         custom_dictionary=config["custom_dictionary"],
                         reference_audio=config["reference_audio_bytes"],
-                    ):
+                    )
+                    first_chunk = await stream.__anext__()
+                    sample_rate = getattr(engine, "sample_rate", 22050)
+
+                    # Send streaming start metadata with exact post-load sample_rate
+                    await ws.send_json({
+                        "status": "streaming",
+                        "type": "streaming",
+                        "engine": config["model"],
+                        "model": config["model"],
+                        "sample_rate": sample_rate,
+                    })
+
+                    if first_chunk and not cancel_event.is_set():
+                        await ws.send_bytes(first_chunk)
+
+                    # Stream remaining chunks sentence-by-sentence / clause-by-clause
+                    async for chunk in stream:
                         if cancel_event.is_set():
                             break
                         if chunk:
@@ -148,8 +153,10 @@ async def websocket_tts_endpoint(ws: WebSocket) -> None:
 
                     if not cancel_event.is_set():
                         await ws.send_json({"status": "completed", "type": "done"})
+                except StopAsyncIteration:
+                    await ws.send_json({"status": "error", "error": "Text produced no audio", "recoverable": True})
                 except Exception as exc:
-                    logger.warning(f"WebSocket TTS synthesis warning: {exc}")
+                    logger.error(f"WebSocket TTS synthesis error for '{config['model']}': {exc}")
                     await ws.send_json({"status": "error", "error": str(exc), "recoverable": True})
 
     except WebSocketDisconnect:

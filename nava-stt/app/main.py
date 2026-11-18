@@ -124,6 +124,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Model catalog + download (same routes as unified server; client hits stt_url/v1/models)
+try:
+    from nava.server.routes_models import router as models_router
+
+    app.include_router(models_router)
+except Exception as exc:  # pragma: no cover - keep STT up if optional import fails
+    print(f"Warning: /v1/models routes unavailable: {exc}")
+
 
 async def infer(
     pcm: bytes,

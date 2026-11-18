@@ -176,19 +176,34 @@ def find_espeak_ng_data(model_dir: Path | None = None) -> Path | None:
     if env_dir:
         candidates.append(Path(env_dir))
 
-    try:
-        import sherpa_onnx
-        candidates.append(Path(sherpa_onnx.__file__).parent / "espeak-ng-data")
-    except Exception:
-        pass
+    # Check Python site-packages that bundle espeak-ng-data (piper-tts 1.3+, piper_phonemize, sherpa_onnx)
+    for pkg_name in ("piper", "piper_phonemize", "sherpa_onnx"):
+        try:
+            pkg = __import__(pkg_name)
+            pkg_root = Path(pkg.__file__).parent
+            candidates.append(pkg_root / "espeak-ng-data")
+            candidates.append(pkg_root / "data" / "espeak-ng-data")
+        except Exception:
+            pass
 
     candidates.extend([
         Path("/usr/share/espeak-ng-data"),
         Path("/usr/lib/espeak-ng-data"),
+        Path("/usr/lib/x86_64-linux-gnu/espeak-ng-data"),
+        Path("/usr/lib/aarch64-linux-gnu/espeak-ng-data"),
         Path("/usr/local/share/espeak-ng-data"),
         Path("/opt/homebrew/share/espeak-ng-data"),
         Path("/opt/homebrew/opt/espeak-ng/share/espeak-ng-data"),
     ])
+
+    # Also scan Debian/Ubuntu multiarch /usr/lib/*/espeak-ng-data
+    usr_lib = Path("/usr/lib")
+    if usr_lib.is_dir():
+        try:
+            for p in usr_lib.glob("*/espeak-ng-data"):
+                candidates.append(p)
+        except Exception:
+            pass
 
     for c in candidates:
         if c.is_dir() and (c / "phontab").exists():
@@ -196,16 +211,43 @@ def find_espeak_ng_data(model_dir: Path | None = None) -> Path | None:
     return None
 
 
+def _filter_ipa_to_tokens(ipa: str, allowed_tokens: set[str]) -> str:
+    """Ensure every space-separated IPA symbol exists in allowed_tokens (splitting digraphs if needed)."""
+    if not allowed_tokens:
+        return ipa
+    out: list[str] = []
+    for tok in ipa.split():
+        if tok in allowed_tokens:
+            out.append(tok)
+        else:
+            # Try character-by-character decomposition (e.g. 'ɒː' -> 'ɒ', 'ː')
+            for ch in tok:
+                if ch in allowed_tokens:
+                    out.append(ch)
+    return " ".join(out)
+
+
 def ensure_matcha_lexicon(
     model_dir: Path,
     tokens_path: Path,
     additional_text: str = "",
 ) -> Path:
-    """Ensure a verified lexicon.txt exists in model_dir with mappings for all words in text.
+    """Ensure a verified lexicon.txt exists with mappings for all words in text.
 
-    Guarantees sherpa-onnx Matcha-TTS never fails with 'No lexicon available' or
-    'Failed to convert word to token IDs'.
+    Falls back to tempfile.gettempdir() if model_dir is read-only.
     """
+    import tempfile
+
+    allowed_tokens: set[str] = set()
+    if tokens_path.exists():
+        try:
+            for line in tokens_path.read_text(encoding="utf-8").splitlines():
+                parts = line.strip().split()
+                if parts:
+                    allowed_tokens.add(parts[0])
+        except Exception:
+            pass
+
     lexicon_path = model_dir / "lexicon.txt"
     lex_entries: dict[str, str] = {}
 
@@ -225,8 +267,10 @@ def ensure_matcha_lexicon(
     changed = False
     for word, ipa in COMMON_PERSIAN_IPA.items():
         if word not in lex_entries:
-            lex_entries[word] = ipa
-            changed = True
+            filtered = _filter_ipa_to_tokens(ipa, allowed_tokens)
+            if filtered:
+                lex_entries[word] = filtered
+                changed = True
 
     # If additional_text is provided, ensure all tokens/words in it are present
     if additional_text:
@@ -234,17 +278,25 @@ def ensure_matcha_lexicon(
         for w in words:
             w_norm = w.replace("\u200c", "")
             if w and w not in lex_entries:
-                ipa = word_to_ipa_fallback(w)
-                lex_entries[w] = ipa
-                changed = True
+                ipa = _filter_ipa_to_tokens(word_to_ipa_fallback(w), allowed_tokens)
+                if ipa:
+                    lex_entries[w] = ipa
+                    changed = True
             if w_norm and w_norm not in lex_entries:
-                ipa = word_to_ipa_fallback(w_norm)
-                lex_entries[w_norm] = ipa
-                changed = True
+                ipa = _filter_ipa_to_tokens(word_to_ipa_fallback(w_norm), allowed_tokens)
+                if ipa:
+                    lex_entries[w_norm] = ipa
+                    changed = True
 
     if changed or not lexicon_path.exists():
         lines = [f"{k} {v}" for k, v in sorted(lex_entries.items())]
-        lexicon_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        payload = "\n".join(lines) + "\n"
+        try:
+            lexicon_path.write_text(payload, encoding="utf-8")
+        except OSError:
+            # Model volume may be mounted read-only; write to temp directory
+            lexicon_path = Path(tempfile.gettempdir()) / f"nava-matcha-lexicon-{model_dir.name}.txt"
+            lexicon_path.write_text(payload, encoding="utf-8")
 
     return lexicon_path
 

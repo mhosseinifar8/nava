@@ -28,6 +28,8 @@ from typing import Any
 os.environ["NAVA_CPU_TUNING"] = "1"
 os.environ["OMP_NUM_THREADS"] = "4"
 os.environ["MKL_NUM_THREADS"] = "4"
+# Allow offline benchmark execution even when heavy model weights are not downloaded locally
+os.environ.setdefault("NAVA_ALLOW_DUMMY_AUDIO", "1")
 
 from starlette.testclient import TestClient
 

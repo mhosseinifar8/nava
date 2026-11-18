@@ -17,6 +17,12 @@ def client() -> TestClient:
     return TestClient(app)
 
 
+@pytest.fixture
+def allow_dummy_tts(monkeypatch: pytest.MonkeyPatch):
+    """Opt-in offline dummy silence ONLY for endpoint plumbing tests without model weights."""
+    monkeypatch.setenv("NAVA_ALLOW_DUMMY_AUDIO", "1")
+
+
 def make_wav_bytes(duration_s: float = 1.0, sample_rate: int = 16000) -> bytes:
     buf = io.BytesIO()
     with wave.open(buf, "wb") as wf:
@@ -44,6 +50,13 @@ class TestModelsEndpoints:
         model_ids = {m["id"] for m in models}
         assert "shenava-koochik-ctc" in model_ids
         assert "piper-mana-lca" in model_ids
+
+    def test_get_models_legacy_aliases(self, client: TestClient):
+        for path in ("/api/v1/models", "/v1/v1/models"):
+            r = client.get(path)
+            assert r.status_code == 200
+            assert isinstance(r.json(), list)
+            assert len(r.json()) >= 21
 
     def test_download_endpoint_validation(self, client: TestClient):
         # Empty body should raise 400
@@ -102,7 +115,7 @@ class TestSTTEndpoints:
 
 
 class TestTTSEndpoints:
-    def test_speech_modern_payload(self, client: TestClient):
+    def test_speech_modern_payload(self, client: TestClient, allow_dummy_tts):
         payload = {
             "input": "سلام به پروژه نوا",
             "model": "piper-mana-lca",
@@ -115,7 +128,7 @@ class TestTTSEndpoints:
         assert r.headers["X-Nava-Sample-Rate"] == "22050"
         assert len(r.content) > 0
 
-    def test_speech_wav_format(self, client: TestClient):
+    def test_speech_wav_format(self, client: TestClient, allow_dummy_tts):
         payload = {
             "input": "سلام",
             "model": "ava-82m",
@@ -125,7 +138,7 @@ class TestTTSEndpoints:
         assert r.status_code == 200
         assert r.content.startswith(b"RIFF")
 
-    def test_speech_legacy_payload(self, client: TestClient):
+    def test_speech_legacy_payload(self, client: TestClient, allow_dummy_tts):
         payload = {
             "text": "سلام",
             "engine": "piper",
@@ -166,7 +179,7 @@ class TestWebSockets:
             assert final_res.get("type") == "final"
             assert "text" in final_res
 
-    def test_websocket_tts_flow(self, client: TestClient):
+    def test_websocket_tts_flow(self, client: TestClient, allow_dummy_tts):
         with client.websocket_connect("/v1/ws/tts") as ws:
             # Send text request
             ws.send_json({

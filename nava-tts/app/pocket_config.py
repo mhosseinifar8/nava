@@ -14,6 +14,13 @@ from pathlib import Path
 
 _HF_REF = re.compile(r"hf://[^/\s\"']+/[^/\s\"']+/([^\s\"']+)")
 
+_ALIASES: dict[str, tuple[str, ...]] = {
+    "tokenizer.model": ("tokenizer.model", "tokenizer_ph.model"),
+    "tokenizer_ph.model": ("tokenizer_ph.model", "tokenizer.model"),
+    "farsi.yaml": ("farsi.yaml", "model.yaml"),
+    "model.yaml": ("model.yaml", "farsi.yaml"),
+}
+
 
 def localize_pocket_config(config: Path, pocket_dir: Path) -> Path:
     """Return a config path whose hf:// URLs point at local files in pocket_dir.
@@ -26,10 +33,11 @@ def localize_pocket_config(config: Path, pocket_dir: Path) -> Path:
 
     def _local(match: "re.Match[str]") -> str:
         filename = match.group(1).split("@", 1)[0]
-        local = pocket_dir / filename
-        if not local.is_file():
-            raise RuntimeError(f"Pocket model file missing: {local} — run scripts/download_models.sh")
-        return str(local)
+        for cand in _ALIASES.get(filename, (filename,)):
+            local = pocket_dir / cand
+            if local.is_file():
+                return str(local)
+        raise RuntimeError(f"Pocket model file missing: {pocket_dir / filename} — run scripts/download_models.sh")
 
     patched = _HF_REF.sub(_local, text)
     if patched == text:
