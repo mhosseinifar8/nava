@@ -34,6 +34,8 @@ from .base import (
     allow_dummy_audio_fallback,
     float32_to_pcm16,
     make_silence_pcm,
+    pcm16_to_wav_bytes,
+    resample_pcm16,
 )
 
 logger = logging.getLogger("nava.tts")
@@ -196,33 +198,93 @@ class PocketEngine(BaseTTSEngine):
         return len(text.split()) * 2
 
     def _find_voice_wav(self, voice: str) -> Path | None:
-        """Search all standard locations for a Pocket-TTS conditioning voice WAV."""
+        """Search all standard locations (including sibling Pocket models) for a conditioning voice WAV."""
         # 1. Explicit voice in voices manager
         vp = self.voice_mgr.get_voice_path(voice)
         if vp and vp.is_file():
             return vp
 
-        # 2. Voice file inside model directory (including example_voice.wav shipped with pocket-tts-farsi)
-        search_dirs = [self.model_dir, self.model_dir.parent / "pocket"]
+        # 2. Voice file inside model directory or sibling Pocket directories
+        models_root = self.model_dir.parent
+        search_dirs = [
+            self.model_dir,
+            models_root / "pocket-tts-farsi",
+            models_root / "pocket-tts-farsi-v2",
+            models_root / "nava-fa-clone",
+            models_root / "pocket",
+        ]
+        seen_dirs: set[Path] = set()
         for d in search_dirs:
-            if not d.is_dir():
+            if d in seen_dirs or not d.is_dir():
                 continue
+            seen_dirs.add(d)
             for name in (f"{voice}.wav", "example_voice.wav", "default.wav"):
                 cand = d / name
-                if cand.is_file():
+                if cand.is_file() and cand.stat().st_size > 44:
                     return cand
 
         # 3. Default voice in voices manager
         default_vp = self.voice_mgr.get_voice_path("default")
-        if default_vp and default_vp.is_file():
+        if default_vp and default_vp.is_file() and default_vp.stat().st_size > 44:
             return default_vp
 
-        # 4. Any nested WAV in voices dir (e.g. models/voices/alba-mackenna/casual.wav) or model dir
-        for root in (self.voice_mgr.voices_dir, self.model_dir, self.model_dir.parent / "pocket"):
+        # 4. Any nested WAV in voices dir (e.g. models/voices/alba-mackenna/casual.wav) or Pocket dirs
+        for root in [self.voice_mgr.voices_dir, *seen_dirs]:
             if root.is_dir():
                 for wav in sorted(root.glob("**/*.wav")):
                     if wav.is_file() and wav.stat().st_size > 44:
                         return wav
+
+        # 5. Check cached temp bootstrapped voice if /models/voices was read-only
+        tmp_default = Path(tempfile.gettempdir()) / "nava-pocket-default-voice.wav"
+        if tmp_default.is_file() and tmp_default.stat().st_size > 44:
+            return tmp_default
+
+        return None
+
+    def _bootstrap_default_voice_wav(self) -> Path | None:
+        """Auto-generate a clean 24kHz Persian human reference voice WAV via installed Piper.
+
+        Ensures pocket-tts-farsi / pocket-tts-farsi-v2 / nava-fa-clone work out-of-the-box
+        even when /models/voices/default.wav has not been manually uploaded yet.
+        """
+        from .tts_piper import PiperEngine
+
+        models_root = self.model_dir.parent
+        sample_text = "سلام، خوش آمدید. من دستیار صوتی فارسی نوا هستم و آماده پاسخگویی به شما می‌باشم."
+
+        for piper_id, speaker in (("piper-mana-lca", "mana"), ("piper-voices-fa", "ganji")):
+            try:
+                piper = PiperEngine(piper_id, models_root / piper_id)
+                # Verify real Piper weights exist on disk (never bootstrap from dummy silence)
+                piper._resolve_model_file(speaker)
+                res = piper.synthesize(sample_text, voice=speaker, speed=1.0)
+                if not res.audio:
+                    continue
+                samples = np.frombuffer(res.audio, dtype="<i2")
+                if samples.size < int(res.sample_rate * 1.0) or int(np.max(np.abs(samples))) < 500:
+                    continue
+
+                pcm_24k = resample_pcm16(res.audio, res.sample_rate, self.sample_rate)
+                wav_bytes = pcm16_to_wav_bytes(pcm_24k, self.sample_rate)
+
+                target = self.voice_mgr.voices_dir / "default.wav"
+                try:
+                    self.voice_mgr.voices_dir.mkdir(parents=True, exist_ok=True)
+                    target.write_bytes(wav_bytes)
+                    logger.info(
+                        f"Auto-bootstrapped default Pocket reference voice at {target} using {piper_id}"
+                    )
+                    return target
+                except OSError:
+                    tmp_target = Path(tempfile.gettempdir()) / "nava-pocket-default-voice.wav"
+                    tmp_target.write_bytes(wav_bytes)
+                    logger.info(
+                        f"Auto-bootstrapped default Pocket reference voice at {tmp_target} using {piper_id}"
+                    )
+                    return tmp_target
+            except Exception:
+                continue
         return None
 
     def _get_conditioning_state(self, voice: str, reference_audio: bytes | None = None) -> Any:
@@ -234,6 +296,8 @@ class PocketEngine(BaseTTSEngine):
             return self.states[voice]
 
         voice_path = self._find_voice_wav(voice)
+        if not voice_path or not voice_path.is_file():
+            voice_path = self._bootstrap_default_voice_wav()
         if not voice_path or not voice_path.is_file():
             raise RuntimeError(
                 f"Pocket-TTS '{self.model_id}' requires a reference voice WAV file (2-5s mono/stereo WAV), "

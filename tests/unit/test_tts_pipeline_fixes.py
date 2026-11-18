@@ -193,6 +193,44 @@ class TestPocketFixes:
         found = engine._find_voice_wav("default")
         assert found == example_wav
 
+    def test_nava_fa_clone_reuses_sibling_pocket_example_voice(self, tmp_path: Path):
+        # nava-fa-clone has no WAV of its own, but sibling pocket-tts-farsi has example_voice.wav
+        sibling = tmp_path / "pocket-tts-farsi"
+        sibling.mkdir()
+        example_wav = sibling / "example_voice.wav"
+        example_wav.write_bytes(pcm16_to_wav_bytes(b"\x00\x00" * 24000, 24000))
+
+        clone_dir = tmp_path / "nava-fa-clone"
+        clone_dir.mkdir()
+        engine = PocketEngine("nava-fa-clone", clone_dir)
+        found = engine._find_voice_wav("default")
+        assert found == example_wav
+
+    def test_pocket_auto_bootstraps_default_voice_via_piper(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        from nava.engines.base import TTSResult
+
+        clone_dir = tmp_path / "nava-fa-clone"
+        clone_dir.mkdir()
+        piper_dir = tmp_path / "piper-mana-lca"
+        piper_dir.mkdir()
+        (piper_dir / "fa_IR-mana-medium.onnx").write_bytes(b"onnx")
+        (piper_dir / "fa_IR-mana-medium.onnx.json").write_text("{}", encoding="utf-8")
+
+        speech_pcm = float32_to_pcm16(_make_speech_like_signal(22050, 1.5))
+        monkeypatch.setattr(
+            "nava.engines.tts_piper.PiperEngine.synthesize",
+            lambda self, text, **kw: TTSResult(audio=speech_pcm, sample_rate=22050, engine="piper", voice="mana"),
+        )
+
+        engine = PocketEngine("nava-fa-clone", clone_dir)
+        bootstrapped = engine._bootstrap_default_voice_wav()
+        assert bootstrapped is not None and bootstrapped.is_file()
+        pcm, sr = wav_bytes_to_pcm16(bootstrapped.read_bytes())
+        assert sr == 24000
+        assert len(pcm) > 24000 * 2  # > 1 second of 24kHz audio
+
 
 class TestMatchaFixes:
     """Verify Matcha flexible file resolution and espeak-ng-data discovery."""

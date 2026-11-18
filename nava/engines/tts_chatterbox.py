@@ -50,6 +50,7 @@ def _find_crispasr_binary() -> str | None:
     for path in (
         Path("/usr/local/bin/crispasr"),
         Path("/usr/bin/crispasr"),
+        Path("/opt/crispasr/bin/crispasr"),
         Path("/opt/crispasr/crispasr"),
     ):
         if path.is_file():

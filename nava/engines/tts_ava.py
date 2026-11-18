@@ -85,10 +85,15 @@ class AvaEngine(BaseTTSEngine):
                 try:
                     self._ava_model = Ava.from_pretrained(str(self.model_dir))
                 except Exception:
-                    self._ava_model = Ava()
-            elif hasattr(Ava, "from_pretrained"):
-                self._ava_model = Ava.from_pretrained("xmanii/Ava-82M")
-            else:
+                    self._ava_model = None
+
+            if self._ava_model is None and hasattr(Ava, "from_pretrained"):
+                try:
+                    self._ava_model = Ava.from_pretrained("xmanii/Ava-82M")
+                except Exception:
+                    self._ava_model = None
+
+            if self._ava_model is None:
                 self._ava_model = Ava()
 
             if hasattr(self._ava_model, "sample_rate") and self._ava_model.sample_rate:
